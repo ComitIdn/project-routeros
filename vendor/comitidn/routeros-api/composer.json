@@ -1,0 +1,26 @@
+{
+  "name": "comitidn/routeros-api",
+  "description": "RouterOS API PHP Client",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "RouterOSAPI\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=7.3"
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Bang AL",
+      "email": "acm2lp2@gmail.com"
+    }
+  ],
+  "minimum-stability": "stable",
+  "extra": {
+    "branch-alias": {
+      "dev-dev-main": "1.0-dev"
+    }
+  }
+}

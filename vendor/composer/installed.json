@@ -1,0 +1,55 @@
+{
+    "packages": [
+        {
+            "name": "comitidn/routeros-api",
+            "version": "dev-dev-main",
+            "version_normalized": "dev-dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ComitIdn/routeros-api.git",
+                "reference": "919997cdb30743bcdabf877c1491fcc8bc13cd9b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ComitIdn/routeros-api/zipball/919997cdb30743bcdabf877c1491fcc8bc13cd9b",
+                "reference": "919997cdb30743bcdabf877c1491fcc8bc13cd9b",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.3"
+            },
+            "time": "2024-08-26T21:11:36+00:00",
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-dev-main": "1.0-dev"
+                }
+            },
+            "installation-source": "dist",
+            "autoload": {
+                "psr-4": {
+                    "RouterOSAPI\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Bang AL",
+                    "email": "acm2lp2@gmail.com"
+                }
+            ],
+            "description": "RouterOS API PHP Client",
+            "support": {
+                "issues": "https://github.com/ComitIdn/routeros-api/issues",
+                "source": "https://github.com/ComitIdn/routeros-api/tree/dev-main"
+            },
+            "install-path": "../comitidn/routeros-api"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}
