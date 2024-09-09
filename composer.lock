@@ -1,0 +1,67 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "23b2371e24b98143ef2a11f25a52d63d",
+    "packages": [
+        {
+            "name": "comitidn/routeros-api",
+            "version": "dev-dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ComitIdn/routeros-api.git",
+                "reference": "919997cdb30743bcdabf877c1491fcc8bc13cd9b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ComitIdn/routeros-api/zipball/919997cdb30743bcdabf877c1491fcc8bc13cd9b",
+                "reference": "919997cdb30743bcdabf877c1491fcc8bc13cd9b",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.3"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-dev-main": "1.0-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "RouterOSAPI\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Bang AL",
+                    "email": "acm2lp2@gmail.com"
+                }
+            ],
+            "description": "RouterOS API PHP Client",
+            "support": {
+                "issues": "https://github.com/ComitIdn/routeros-api/issues",
+                "source": "https://github.com/ComitIdn/routeros-api/tree/dev-main"
+            },
+            "time": "2024-08-26T21:11:36+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {
+        "comitidn/routeros-api": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.6.0"
+}
