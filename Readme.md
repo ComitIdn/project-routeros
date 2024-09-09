@@ -79,7 +79,8 @@ Before starting :checkered_flag:, you need to have [Git](https://git-scm.com) an
 
 ## :checkered_flag: Starting ##
 ### Installation:
-```ruby
+
+```bash
 # Clone the project
 $ git clone https://github.com/comitIdn/project-routeros
 
@@ -89,12 +90,16 @@ $ cd project-routeros
 # Install dependencies
 $ composer install
 ```
-## Usage:
-Once installed, you can use the classes provided in RouterOSConnection.php and RouterOSAPI.php to interact with MikroTik devices.
 
-## Example:
-Here’s an example of how to use RouterOSConnection.php to interact with MikroTik:
-```ruby
+### Usage:
+
+Once installed, you can use the classes provided in `RouterOSConnection.php` and `RouterOSAPI.php` to interact with MikroTik devices.
+
+### Example:
+
+Here’s an example of how to use `RouterOSConnection.php` to interact with MikroTik:
+
+```php
 require 'vendor/autoload.php';
 use App\RouterOSConnection;
 
@@ -113,10 +118,13 @@ print_r($newPppoeUser);
 $reboot = $routerOS->rebootRouter();
 print_r($reboot);
 ```
-## Available Methods:
+
+### Available Methods:
+
 #### From `RouterOSConnection.php`:
-__1. PPPoE Management:__
-```ruby
+
+1. **PPPoE Management**:
+```php
 getPppoeUsers(); // Retrieve all PPPoE users
 getPppoeUserDetails($name); // Get details of a specific PPPoE user by name
 addPppoeUser($name, $password, $service, $profile, $comment); // Add a new PPPoE user
@@ -125,8 +133,9 @@ removePppoeUser($name); // Remove a PPPoE user
 getActivePppoeUsers(); // Get all active PPPoE users
 removeActivePppoeUser($id); // Remove an active PPPoE user by session ID
 ```
-__2. Hotspot Management:__
-```ruby
+
+2. **Hotspot Management**:
+```php
 getHotspotUsers(); // Retrieve all Hotspot users
 addHotspotUser($name, $password, $profile, $limitUptime, $comment); // Add a new Hotspot user
 setHotspotUser($name, $password, $limitUptime, $comment, $profile); // Update Hotspot user details
@@ -134,64 +143,75 @@ removeHotspotUser($name); // Remove a Hotspot user
 getActiveHotspotUsers(); // Get all active Hotspot users
 removeActiveHotspotUser($id); // Remove an active Hotspot user by session ID
 ```
-__3. Firewall Management:__
-```ruby
+
+3. **Firewall Management**:
+```php
 getFirewallFilterRules(); // Get all firewall filter rules
 getFirewallNatRules(); // Get all firewall NAT rules
 getFirewallMangleRules(); // Get all firewall mangle rules
 getFirewallRawRules(); // Get all firewall raw rules
 ```
-__4. DNS Management:__
-```ruby
+
+4. **DNS Management**:
+```php
 getDnsCache(); // Get all DNS cache entries
 getDnsSettings(); // Get DNS settings
 ```
-__5. System Management:__
-```ruby
+
+5. **System Management**:
+```php
 getSystemResources(); // Get system resources (CPU, memory, uptime, etc.)
 rebootRouter(); // Reboot the router
 ```
-__6. Queue Management:__
-```ruby
+
+6. **Queue Management**:
+```php
 getQueues(); // Get all queues
 addQueue($name, $target, $maxLimit); // Add a queue
 ```
-__7. Tools:__
-```ruby
-getQueues(); // Get all queues
-addQueue($name, $target, $maxLimit); // Add a queue
+
+7. **Tools**:
+```php
+ping($address); // Ping a specific IP address
+getNetwatch(); // Get active Netwatch entries
 ```
-__8. Log Management:__
-```ruby
+
+8. **Log Management**:
+```php
 getLogs(); // Retrieve system logs
 ```
-__9. Custom Command Execution:__
-```ruby
+
+9. **Custom Command Execution**:
+```php
 customCommand($command); // Execute custom RouterOS commands
 ```
 
 #### From `RouterOSAPI.php`:
-__1. System Script Management:__
-```ruby
+
+1. **System Script Management**:
+```php
 addSystemScript($name, $source); // Add a new system script
 removeSystemScript($name); // Remove a system script
 getSystemScripts(); // Get all system scripts
 getSystemScriptByName($name); // Get specific script details by name
 ```
-__2. Scheduler Management:__
-```{php}
+
+2. **Scheduler Management**:
+```php
 addScheduler($name, $onEvent, $startDate, $startTime, $interval); // Add a new scheduler
 removeScheduler($name); // Remove a scheduler
 ```
-__3. Firewall Management (Extended):__
-```ruby
+
+3. **Firewall Management (Extended)**:
+```php
 getFirewallFilterRules(); // Get all firewall filter rules
 getFirewallNatRules(); // Get all firewall NAT rules
 getFirewallMangleRules(); // Get all firewall mangle rules
 getFirewallRawRules(); // Get all firewall raw rules
 ```
-__4. Tools (Extended):__
-```ruby
+
+4. **Tools (Extended)**:
+```php
 ping($address); // Ping a specific IP address
 getNetwatch(); // Get active Netwatch entries
 ```
@@ -201,4 +221,5 @@ This project is licensed under the MIT License. For more details, see the LICENS
 Made with :heart: by <a href="https://github.com/comitIdn" target="_blank">Bang AL</a>
 
 
-<a href="#top">Back to top</a>
+<a href="#top">Back to top</a># project-routeros
+# project-routeros
