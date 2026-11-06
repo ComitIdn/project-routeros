@@ -3,9 +3,9 @@
 // config . php
 return [
     'mikrotik' => [
-        'host'     => 'al-it.my.id:2009',
-        'user'     => 'risdian',
-        'password' => 'molawe123',
+        'host'     => '192.168.101.7',
+        'user'     => 'admin',
+        'password' => '',
         'port'     => 8728, // Port default MikroTik
     ],
 ];
