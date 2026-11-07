@@ -553,7 +553,7 @@ class RouterOS
     }
 
     /**
-     * Bootstrap full Mikhmon official ecosystem on this router:
+     * Bootstrap full automation ecosystem on this router:
      * - All 6 official schedulers (autoremove-report, Expire-Monitor, Live-Report-Monitor, Reset-Expire-Monitor, Reset-Expire-Monitor-Daily, isolir)
      * - IP Pool isolir (10.10.10.2-10.10.10.254)
      * - PPP Profile isolir (512k/512k)
@@ -565,20 +565,20 @@ class RouterOS
      *   'pppoe_profile'   => ['name' => 'P3', 'rate_limit' => '3M/3M', 'validity' => '30d', ...],
      * @return array
      */
-    public function setupMikhmonAll(array $config = []): array
+    public function setupAll(array $config = []): array
     {
         $results = [];
 
         // 1. Install Hotspot core schedulers
-        $results['hotspot_schedulers'] = $this->hotspot()->installMikhmonCoreSchedulers();
+        $results['hotspot_schedulers'] = $this->hotspot()->installCoreSchedulers();
 
         // 2. Ensure Isolir infrastructure (pool, profile, scheduler)
-        $results['isolir_infra'] = $this->pppoe()->installMikhmonIsolirInfrastructure();
+        $results['isolir_infra'] = $this->pppoe()->installIsolirInfrastructure();
 
         // 3. Optional Hotspot profile setup
         if (!empty($config['hotspot_profile'])) {
             $hp = $config['hotspot_profile'];
-            $results['hotspot_profile'] = $this->hotspot()->setupMikhmonProfile(
+            $results['hotspot_profile'] = $this->hotspot()->setupProfile(
                 $hp['name'] ?? 'V15D',
                 $hp['rate_limit'] ?? '3M/2M',
                 $hp['validity'] ?? '15d',
@@ -596,7 +596,7 @@ class RouterOS
         // 4. Optional PPPoE customer profile setup
         if (!empty($config['pppoe_profile'])) {
             $pp = $config['pppoe_profile'];
-            $results['pppoe_customer_profile'] = $this->pppoe()->setupMikhmonCustomerProfile(
+            $results['pppoe_customer_profile'] = $this->pppoe()->setupCustomerProfile(
                 $pp['name'] ?? 'P3',
                 $pp['rate_limit'] ?? '3M/3M',
                 $pp['local_address'] ?? '192.168.100.1',
@@ -610,5 +610,13 @@ class RouterOS
             'status'  => 'success',
             'results' => $results,
         ];
+    }
+
+    /**
+     * Backward compatibility alias for setupAll.
+     */
+    public function setupMikhmonAll(array $config = []): array
+    {
+        return $this->setupAll($config);
     }
 }

@@ -24,7 +24,7 @@
   <a href="#-per-router-isolated-session--cache-arsitektur-bersih">Per-Router Session & Cache</a> &nbsp;|&nbsp;
   <a href="#-multi-logging-per-id-routeros-database--file-log">Multi-Logging</a> &nbsp;|&nbsp;
   <a href="#-multi-chatid-bot-telegram--whatsapp-alert">Multi ChatId Bot</a> &nbsp;|&nbsp;
-  <a href="#-mikhmon-official-hotspot--pppoe-profiles-dan-auto-scheduler">Mikhmon Official Profiles</a> &nbsp;|&nbsp;
+  <a href="#-enterprise-automation-engine-hotspot--pppoe-profiles-dan-auto-scheduler">Enterprise Automation Engine</a> &nbsp;|&nbsp;
   <a href="#-mass-scale-voucher-engine-hingga-10000-sekaligus">Voucher Massal</a> &nbsp;|&nbsp;
   <a href="#-enterprise-server--firewall-security-baseline">Server & Firewall</a> &nbsp;|&nbsp;
   <a href="#-unified-mysql--mariadb--sqlite-architecture">MySQL Enterprise</a> &nbsp;|&nbsp;
@@ -59,8 +59,8 @@
 6. **Multi ChatId Bot Telegram & WhatsApp Notifications**:
    - Mendukung pengiriman notifikasi broadcast alert ke banyak ID grup NOC, tim teknisi, dan pimpinan secara bersamaan.
    - Pengaturan mudah lewat file `config.php` (`telegram_chat_ids` & `whatsapp_recipients`) atau dinamis saat runtime (`addTelegramChatId`, `addWhatsAppRecipient`).
-7. **Mikhmon Official Hotspot & PPPoE Profiles, Schedulers & Auto-Isolir**:
-   - **Hotspot On-Login Script**: Format resmi Mikhmon (`exp: date time`), kunci MAC address otomatis (*anti-tethering*), dan scheduler cleaner penghapus sesi hantu.
+7. **Enterprise Universal Hotspot & PPPoE Profiles, Schedulers & Auto-Isolir**:
+   - **Hotspot On-Login Script Engine**: Format global terstandarisasi (`exp: date time`), kunci MAC address otomatis (*anti-tethering*), tag kustom neutral (`routeros`), dan scheduler cleaner penghapus sesi hantu.
    - **PPPoE Isolir Profile & Scheduler**: Profile `ISOLIR`, auto-isolir scheduler memeriksa tag jatuh tempo `due:YYYY-MM-DD`, firewall NAT redirect ke landing page isolir, dan metode reaktivasi instan pelanggan pasca bayar (`reconnectCustomer()`).
 8. **Dukungan Multi-Bahasa & Lingkungan Pemrograman**:
    - **PHP**: Native / Manual, Laravel Facade & ServiceProvider, CodeIgniter 3 & 4.
@@ -114,7 +114,7 @@ project-routeros/
 │   ├── 08_javascript_master.js # Master JavaScript Multi-Router Concurrent Pool & Debugger
 │   ├── 09_enterprise_server_and_security.php # SFP Fiber, LACP Bonding, VRRP, & FastTrack Firewall
 │   ├── 10_mysql_enterprise_architecture.php  # High-Throughput MySQL Batch Inserts & ACID Transactions
-│   └── 11_mikhmon_profiles_and_multi_router.php # Mikhmon Official Profiles, Schedulers, Multi-Logging & Multi-Bot
+│   └── 11_mikhmon_profiles_and_multi_router.php # Enterprise Profiles, Schedulers, Multi-Logging & Multi-Bot
 ├── assets/
 │   └── js/
 │       └── routeros.js         # Client-side JavaScript SDK Universal (Vanilla, Vue, React, Node)
@@ -459,16 +459,16 @@ Konfigurasi statis juga dapat langsung disetel di [`config.php`](file:///data/da
 
 ---
 
-## 👑 Mikhmon Official Hotspot & PPPoE Profiles dan Auto-Scheduler
+## 👑 Enterprise Automation Engine: Hotspot & PPPoE Profiles dan Auto-Scheduler
 
-Dukungan 100% kompatibel dan otentik dengan alur kerja **Mikhmon Online Official** untuk manajemen billing ISP RT/RW Net:
+Sistem otomatisasi kelas enterprise yang global, fleksibel, dan 100% independen tanpa ketergantungan nama/brand tertentu (`tag` otomatis neutral `routeros` atau dapat dikustomisasi bebas):
 
-### 1. Mikhmon Hotspot User Profile, MAC-Cookie & Schedulers
-Menciptakan profil voucher dengan script `on-login` resmi Mikhmon yang mencatat jam login pertama (`exp: date time`), sistem kalender otomatis (kabisat & pergantian tahun), penguncian MAC address (*anti-tethering*), MAC cookie timeout, dan pencatatan riwayat penjualan di `/system script`:
+### 1. Global Hotspot User Profile, MAC-Cookie & Schedulers
+Menciptakan profil voucher dengan script `on-login` cerdas yang mencatat jam login pertama (`exp: date time`), sistem kalender otomatis (kabisat & pergantian tahun), penguncian MAC address (*anti-tethering*), MAC cookie timeout, dan pencatatan riwayat transaksi di `/system script`:
 
 ```php
 // Contoh 1: Profil "V15D" (15 Hari, Pool hs-pool-22, MAC Cookie 1d, 3M/2M, Jual Rp 10.000, Mode ntfc / N)
-$ros->hotspot()->setupMikhmonProfile(
+$ros->hotspot()->setupProfile(
     'V15D',       // Nama profil
     '3M/2M',      // Rate limit (rx/tx)
     '15d',        // Masa aktif
@@ -484,17 +484,18 @@ $ros->hotspot()->setupMikhmonProfile(
         'add_mac_cookie'      => 'yes',
         'mac_cookie_timeout'  => '1d 00:00:00',
         'insert_queue_before' => 'bottom',
-        'install_schedulers'  => true, // Auto pasang 5 core schedulers Mikhmon
+        'tag'                 => 'routeros', // neutral tag (dapat diganti sesuai brand ISP)
+        'install_schedulers'  => true,       // Auto pasang 5 core schedulers otomatis
     ]
 );
 
 // Contoh 2: Profil "V24h" (24 Jam, 3M/2M, Beli Rp 8.000, Jual Rp 10.000, Mode remc / R)
-$ros->hotspot()->setupMikhmonProfile(
+$ros->hotspot()->setupProfile(
     'V24h', '3M/2M', '24h', 8000, 10000, 'remc', 'Disable', 'none', 'none', '1'
 );
 
 // Contoh 3: Profil "V30D" (30 Hari Bulanan, 3M/2M, Rp 0 / Rp 150.000, Mode ntfc / N)
-$ros->hotspot()->setupMikhmonProfile(
+$ros->hotspot()->setupProfile(
     'V30D', '3M/2M', '30d', 0, 150000, 'ntfc', 'Disable', 'none', 'none', '1'
 );
 
@@ -503,18 +504,18 @@ $pools = $ros->hotspot()->getPoolList();           // ['none', 'hs-pool-22', 'dh
 $queues = $ros->hotspot()->getParentQueueList();   // ['none', 'Total-Hotspot-50M']
 
 // Dapatkan command teks MikroTik CLI siap copy-paste:
-$cliCommand = $ros->hotspot()->generateMikhmonProfileCliCommand(
+$cliCommand = $ros->hotspot()->generateProfileCliCommand(
     'V15D', '3M/2M', '15d', 0, 10000, 'ntfc', 'Disable', 'none', 'hs-pool-22', '1',
     ['pool_ranges' => '175.12.0.1-175.12.10.0, 175.12.10.2-175.12.255.254']
 );
 ```
 
-### 2. Mikhmon PPPoE Customer Profile (P3), Isolir Profile, Pool & Scheduler
-Menyiapkan profil pelanggan PPPoE lengkap dengan script `on-up` Mikhmon (kalkulasi kadaluarsa saat status comment `lunas`), IP pool `isolir`, profil `isolir` (512k/512k), dan scheduler RouterOS otomatis yang memutus koneksi saat jatuh tempo:
+### 2. Global PPPoE Customer Profile (P3), Isolir Profile, Pool & Scheduler
+Menyiapkan profil pelanggan PPPoE lengkap dengan script `on-up` otomatis (kalkulasi jatuh tempo saat status comment `lunas`), IP pool `isolir`, profil `isolir` (512k/512k), dan scheduler RouterOS otomatis yang memutus koneksi saat jatuh tempo:
 
 ```php
 // Setup Profil Pelanggan "P3" (Otomatis melengkapi Pool isolir, Profile isolir & Scheduler isolir)
-$ros->pppoe()->setupMikhmonCustomerProfile(
+$ros->pppoe()->setupCustomerProfile(
     'P3',             // Nama profil pelanggan
     '3M/3M',          // Rate limit
     '192.168.100.1',  // Local Address Gateway
@@ -528,7 +529,7 @@ $ros->pppoe()->setupMikhmonCustomerProfile(
 );
 
 // Dapatkan CLI Script MikroTik Lengkap (Pool + Profiles + Scheduler):
-$pppCli = $ros->pppoe()->generateMikhmonPppCliCommands('P3', '3M/3M', '192.168.100.1', 'isolir', '30d');
+$pppCli = $ros->pppoe()->generatePppCliCommands('P3', '3M/3M', '192.168.100.1', 'isolir', '30d');
 
 // Alur Pembayaran & Reaktivasi PPPoE:
 // 1. Tagihan baru terbit -> Comment diatur: "lunas Paket 30 Hari"
@@ -540,25 +541,27 @@ $pppCli = $ros->pppoe()->generateMikhmonPppCliCommands('P3', '3M/3M', '192.168.1
 // 4. Pelanggan bayar -> Cukup set comment kembali ke "lunas ..." dan kembalikan profil ke 'P3'.
 ```
 
-### 3. Enam Mesin Scheduler Otomatis Mikhmon (Auto-Generated)
-Framework otomatis menginjeksi 6 scheduler resmi Mikhmon ke MikroTik RouterOS tanpa perlu pengaturan manual:
+### 3. Enam Mesin Scheduler Otomatis Universal (`AutomationEngine`)
+Framework menyediakan 6 scheduler global RouterOS tanpa perlu pengaturan manual:
 
 | Nama Scheduler | Interval | Start Time | Fungsi Utama |
 |---|---|---|---|
-| **`autoremove-report`** | `1d 00:00:00` | `startup` | Menghapus script laporan penjualan `/system script` yang berusia lebih dari 3 bulan |
+| **`autoremove-report`** | `1d 00:00:00` | `startup` | Menghapus script laporan transaksi `/system script` yang berusia lebih dari 3 bulan |
 | **`Expire-Monitor`** | `00:01:00` | `00:00:00` | Memonitor status sertifikat `expireMonitor`, memeriksa tanggal kadaluarsa voucher, limit 1s (mode N) / hapus user (mode R), dan kick `/ip hotspot active` |
 | **`Live-Report-Monitor`** | `00:02:00` | `startup` | Menghitung omset pendapatan harian dan bulanan secara *real-time* via sertifikat RouterOS tanpa membebani disk/NAND |
 | **`Reset-Expire-Monitor`** | `00:00:00` | `startup` | Memulihkan jam RouterOS pasca-reboot dari timestamp sertifikat untuk RouterBOARD tanpa baterai RTC |
 | **`Reset-Expire-Monitor-Daily`** | `1d 00:00:00` | `00:00:00` | Mereset sertifikat `expireMonitor` harian agar status counter selalu bersih dan akurat |
 | **`isolir`** | `01:00:00` | `startup` | Memonitor jatuh tempo `/ppp secret`, memindahkan pelanggan menunggak ke profil `isolir`, dan mendiskoneksikan koneksi aktif |
 
-### 4. 1-Klik Bootstrap Seluruh Ekosistem Mikhmon
+### 4. 1-Klik Bootstrap Seluruh Ekosistem Otomasi
 ```php
-// Cukup 1 baris untuk menyiapkan seluruh infrastruktur Mikhmon di router baru:
-$ros->setupMikhmonAll([
+// Cukup 1 baris untuk menyiapkan seluruh infrastruktur di router baru:
+$ros->setupAll([
     'hotspot_profile' => ['name' => 'V15D', 'rate_limit' => '3M/2M', 'validity' => '15d', 'address_pool' => 'hs-pool-22'],
     'pppoe_profile'   => ['name' => 'P3', 'rate_limit' => '3M/3M', 'validity' => '30d', 'remote_address' => 'isolir']
 ]);
+
+// *Catatan: Seluruh fungsi lama (setupMikhmonProfile, setupMikhmonCustomerProfile, setupMikhmonAll) tetap didukung 100% sebagai alias backward-compatible!*
 ```
 
 ---
@@ -747,13 +750,13 @@ $stations = $ros->ptmp()->getStations();
 ```bash
 php console.php status
 php console.php protocol rest                      # Beralih protokol
-php console.php mikhmon:hotspot V15D 3M/2M 15d 0 10000 ntfc Disable hs-pool-22 # Buat profil Hotspot + pool
-php console.php mikhmon:pppoe P3 3M/3M 192.168.100.1 isolir 30d                # Buat profil PPPoE + isolir infra
-php console.php mikhmon:schedulers install         # Pasang seluruh 6 scheduler resmi Mikhmon
-php console.php mikhmon:isolir                     # Pasang pool, profile & scheduler isolir
-php console.php mikhmon:setup-all                  # 1-klik bootstrap seluruh ekosistem Mikhmon
-php console.php mikhmon:pools                      # Daftar IP pool untuk dropdown
-php console.php mikhmon:queues                     # Daftar Simple Queue untuk dropdown
+php console.php hotspot:profile V15D 3M/2M 15d 0 10000 ntfc Disable hs-pool-22 # Buat profil Hotspot + pool
+php console.php pppoe:profile P3 3M/3M 192.168.100.1 isolir 30d                # Buat profil PPPoE + isolir infra
+php console.php schedulers:install                 # Pasang seluruh 6 core schedulers otomatis
+php console.php isolir                             # Pasang pool, profile & scheduler isolir
+php console.php setup-all                          # 1-klik bootstrap seluruh infrastruktur
+php console.php pools                              # Daftar IP pool untuk dropdown
+php console.php queues                             # Daftar Simple Queue untuk dropdown
 php console.php ptmp stations                      # Pantau sinyal CPE PTMP
 php console.php ptmp metrics                       # Health metrics PTMP
 php console.php ptmp kick 00:0C:42:AA:BB:CC        # Kick station CPE
@@ -777,10 +780,11 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | :--- | :--- | :--- |
 | `GET` | `/api.php?action=status` | Status resource, identitas router, dan metrik hotspot |
 | `POST` | `/api.php?action=batch` | **Batch Multi-Operation**: Eksekusi banyak operasi sekaligus dalam 1 roundtrip |
-| `POST` | `/api.php?action=mikhmon_setup_all` | **1-Click Bootstrap**: Pasang seluruh 6 schedulers, pool, profile isolir, dan profil pelanggan |
-| `POST` | `/api.php?action=hotspot_setup_mikhmon` | Setup profil Hotspot Mikhmon (MAC cookie, on-login, dropdown pool, auto schedulers) |
+| `POST` | `/api.php?action=setup_all` | **1-Click Bootstrap**: Pasang seluruh 6 schedulers, pool, profile isolir, dan profil pelanggan (alias: `mikhmon_setup_all`) |
+| `POST` | `/api.php?action=hotspot_setup_profile` | Setup profil Hotspot (MAC cookie, on-login, dropdown pool, auto schedulers, alias: `hotspot_setup_mikhmon`) |
 | `POST` | `/api.php?action=pppoe_customer_profile` | Setup profil pelanggan PPPoE (`P3`) dengan script on-up & auto-isolir infrastructure |
-| `POST` | `/api.php?action=mikhmon_schedulers` | Pasang / perbarui 6 scheduler resmi Mikhmon di RouterOS |
+| `POST` | `/api.php?action=pppoe_setup_isolir` | Setup profil ISOLIR, IP pool isolir, & scheduler auto-isolir (alias: `pppoe_setup_mikhmon`) |
+| `POST` | `/api.php?action=schedulers` | Pasang / perbarui 6 core scheduler di RouterOS (alias: `install_schedulers`, `mikhmon_schedulers`) |
 | `POST` | `/api.php?action=ip_ensure_pool` | Buat atau perbarui IP Pool di RouterOS |
 | `POST` | `/api.php?action=generate_voucher` | Generate batch voucher standar |
 | `POST` | `/api.php?action=generate_bulk_vouchers` | **Mass-Scale 10.000+ Vouchers**: Generate massal dengan batch SQL insert & CLI push |
@@ -809,11 +813,9 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | `POST` | `/api.php?action=set_name` | Ganti nama / rename item |
 | `POST` | `/api.php?action=pppoe_suspend` | Isolir pelanggan PPPoE |
 | `POST` | `/api.php?action=pppoe_unsuspend` | Buka isolir pelanggan PPPoE |
-| `POST` | `/api.php?action=pppoe_setup_mikhmon` | Setup profil ISOLIR, NAT redirect, & scheduler auto-isolir |
 | `POST` | `/api.php?action=pppoe_reconnect` | Reaktivasi pelanggan pasca bayar (perbarui due date & kick isolir) |
 | `POST` | `/api.php?action=pppoe_isolate` | Isolir pelanggan langsung dengan catatan alasan |
 | `POST` | `/api.php?action=pppoe_auto_isolate` | Eksekusi pengecekan jatuh tempo dan isolir otomatis |
-| `POST` | `/api.php?action=hotspot_setup_mikhmon` | Setup profil Hotspot Mikhmon dengan on-login auto-cleaner |
 | `GET`/`POST` | `/api.php?action=router_session` | Baca, set, atau bersihkan sesi runtime terisolasi per-router |
 | `GET` | `/api.php?action=router_logs` | Ambil riwayat multi-logging per router ID |
 | `POST` | `/api.php?action=bot_broadcast` | Broadcast pesan alert ke multi ChatId Telegram & WhatsApp |
@@ -839,9 +841,12 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | **`remove()`** | `remove()`, `byName()`, `byId()`, `where()`, `batch()`, `byComment()`, `byProfile()`, `all()` |
 | **`toggle()`** | `enable()`, `disable()`, `toggle()`, `enableBatch()`, `disableBatch()`, `resetCounter()` |
 | **`ptmp()`** | `detectHardware()`, `getStations()`, `getStationQualityMetrics()`, `getAccessList()`, `addAccessList()`, `removeAccessList()`, `getConnectList()`, `addConnectList()`, `kickStation()`, `setProtocol()`, `setNv2Config()`, `setChannel()`, `setTxPower()`, `scanFrequencies()` |
-| **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `createVoucherProfile()`, `generateOnLoginScript()`, `setupMikhmonProfile()`, `installExpiryCleanupScheduler()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
+| **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `createVoucherProfile()`, `generateOnLoginScript()`, `setupProfile()`, `generateOfficialOnLoginScript()`, `generateProfileCliCommand()`, `installCoreSchedulers()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
 | **`voucher()`** | `generate()`, `generateFastBulk()`, `generateRscScript()`, `generateAndSave()`, `generateQrCodeUrl()`, `getFromDb()`, `markUsed()`, `deleteBatch()`, `renderPrintCards()`, `renderThermalReceipt()`, `getSalesReport()`, `getBatchSummary()`, `exportToCsv()`, `importFromCsv()` |
-| **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `isolateCustomer()`, `reconnectCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `ensureIsolateProfile()`, `setupMikhmonIsolirProfile()`, `installPppoeIsolirScheduler()`, `syncToDatabase()` |
+| **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `isolateCustomer()`, `reconnectCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `setupCustomerProfile()`, `setupIsolirProfile()`, `installIsolirInfrastructure()`, `generatePppCliCommands()`, `syncToDatabase()` |
+| **`session()`** | `getSessionId()`, `getToken()`, `setToken()`, `get()`, `set()`, `has()`, `remove()`, `all()`, `touch()`, `isValid()`, `clear()`, `destroy()` |
+| **`bot()`** | `broadcast()`, `sendTelegram()`, `sendWhatsApp()`, `addTelegramChatId()`, `addWhatsAppRecipient()`, `notifyRouterAlert()` |
+| **`firewall()`** | `getFilterRules()`, `addFilterRule()`, `getNatRules()`, `addMasquerade()`, `addAddressList()`, `enableFastTrack()`, `dropInvalid()`, `protectBruteForce()`, `protectPortScanners()`, `hardenServerBaseline()` |
 | **`session()`** | `getSessionId()`, `getToken()`, `setToken()`, `get()`, `set()`, `has()`, `remove()`, `all()`, `touch()`, `isValid()`, `clear()`, `destroy()` |
 | **`bot()`** | `broadcast()`, `sendTelegram()`, `sendWhatsApp()`, `addTelegramChatId()`, `addWhatsAppRecipient()`, `notifyRouterAlert()` |
 | **`firewall()`** | `getFilterRules()`, `addFilterRule()`, `getNatRules()`, `addMasquerade()`, `addAddressList()`, `enableFastTrack()`, `dropInvalid()`, `protectBruteForce()`, `protectPortScanners()`, `hardenServerBaseline()` |

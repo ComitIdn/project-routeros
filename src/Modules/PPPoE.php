@@ -676,39 +676,55 @@ class PPPoE
     }
 
     /**
-     * Generate authentic Mikhmon PPP Profile on-up script.
+     * Generate authentic PPP Profile on-up script.
      * When customer connects and secret comment starts with 'lunas', calculates expiry and sets comment.
      *
      * @param string $validity Expiration interval (e.g. '30d', '7d', '1d')
      * @return string
      */
-    public function generateMikhmonPppOnUpScript(string $validity = '30d'): string
+    public function generatePppOnUpScript(string $validity = '30d'): string
     {
-        return \RouterOSFramework\Core\Mikhmon::getPppOnUpScript($validity);
+        return \RouterOSFramework\Core\AutomationEngine::getPppOnUpScript($validity);
     }
 
     /**
-     * Generate authentic Mikhmon PPPoE Isolir scheduler script.
+     * Backward compatibility alias for generatePppOnUpScript.
+     */
+    public function generateMikhmonPppOnUpScript(string $validity = '30d'): string
+    {
+        return $this->generatePppOnUpScript($validity);
+    }
+
+    /**
+     * Generate authentic PPPoE Isolir scheduler script.
      * Periodically monitors /ppp secret comments and shifts overdue users to profile=isolir while dropping active connection.
      *
      * @return string
      */
-    public function generateMikhmonPppoeIsolirSchedulerScript(): string
+    public function generateIsolirSchedulerScript(): string
     {
-        return \RouterOSFramework\Core\Mikhmon::getIsolirSchedulerScript();
+        return \RouterOSFramework\Core\AutomationEngine::getIsolirSchedulerScript();
     }
 
     /**
-     * Install authentic Mikhmon PPPoE Isolir scheduler on RouterOS:
+     * Backward compatibility alias for generateIsolirSchedulerScript.
+     */
+    public function generateMikhmonPppoeIsolirSchedulerScript(): string
+    {
+        return $this->generateIsolirSchedulerScript();
+    }
+
+    /**
+     * Install authentic PPPoE Isolir scheduler on RouterOS:
      * add name="isolir" start-time=startup interval="01:00:00" comment="Do not remove!!! Monitor PPP Secret Isolir Report"
      *
      * @param string $interval Default '01:00:00'
      * @return array
      */
-    public function installMikhmonPppoeIsolirScheduler(string $interval = '01:00:00'): array
+    public function installIsolirScheduler(string $interval = '01:00:00'): array
     {
         $system = new System($this->conn, $this->db);
-        $sched = \RouterOSFramework\Core\Mikhmon::getIsolirScheduler();
+        $sched = \RouterOSFramework\Core\AutomationEngine::getIsolirScheduler();
         return $system->ensureScheduler(
             $sched['name'],
             $sched['on-event'],
@@ -720,7 +736,15 @@ class PPPoE
     }
 
     /**
-     * Install complete Mikhmon Isolir infrastructure:
+     * Backward compatibility alias for installIsolirScheduler.
+     */
+    public function installMikhmonPppoeIsolirScheduler(string $interval = '01:00:00'): array
+    {
+        return $this->installIsolirScheduler($interval);
+    }
+
+    /**
+     * Install complete Isolir infrastructure:
      * 1. IP Pool 'isolir' (default 10.10.10.2-10.10.10.254)
      * 2. PPP Profile 'isolir' (512k/512k, local 10.10.10.255, remote 'isolir', dns '8.8.8.8,8.8.4.4')
      * 3. System scheduler 'isolir' (hourly check with auto-disconnect)
@@ -731,7 +755,7 @@ class PPPoE
      * @param string $dnsServer DNS server for isolated clients (default '8.8.8.8,8.8.4.4')
      * @return array
      */
-    public function installMikhmonIsolirInfrastructure(
+    public function installIsolirInfrastructure(
         string $poolRanges = '10.10.10.2-10.10.10.254',
         string $localAddress = '10.10.10.255',
         string $rateLimit = '512k/512k',
@@ -759,7 +783,7 @@ class PPPoE
         }
 
         // 3. System scheduler isolir
-        $schedRes = $this->installMikhmonPppoeIsolirScheduler();
+        $schedRes = $this->installIsolirScheduler();
 
         return [
             'status'         => 'success',
@@ -770,7 +794,19 @@ class PPPoE
     }
 
     /**
-     * Setup 100% authentic Mikhmon Customer PPP Profile (e.g. 'P3').
+     * Backward compatibility alias for installIsolirInfrastructure.
+     */
+    public function installMikhmonIsolirInfrastructure(
+        string $poolRanges = '10.10.10.2-10.10.10.254',
+        string $localAddress = '10.10.10.255',
+        string $rateLimit = '512k/512k',
+        string $dnsServer = '8.8.8.8,8.8.4.4'
+    ): array {
+        return $this->installIsolirInfrastructure($poolRanges, $localAddress, $rateLimit, $dnsServer);
+    }
+
+    /**
+     * Setup authentic Customer PPP Profile (e.g. 'P3').
      * Automatically ensures IP pool 'isolir', profile 'isolir', and scheduler 'isolir' exist.
      * Injects authentic on-up script for automatic expiration calculation upon login when comment has 'lunas'.
      *
@@ -782,7 +818,7 @@ class PPPoE
      * @param array $options Extra parameters ('parent_queue', 'dns_server', 'auto_isolir', 'pool_ranges')
      * @return array
      */
-    public function setupMikhmonCustomerProfile(
+    public function setupCustomerProfile(
         string $name = 'P3',
         string $rateLimit = '3M/3M',
         string $localAddress = '192.168.100.1',
@@ -794,7 +830,7 @@ class PPPoE
         $autoIsolir = $options['auto_isolir'] ?? true;
         $isolirInfra = null;
         if ($autoIsolir) {
-            $isolirInfra = $this->installMikhmonIsolirInfrastructure();
+            $isolirInfra = $this->installIsolirInfrastructure();
         }
 
         // 2. If custom remote pool specified and pool_ranges given, ensure pool
@@ -803,8 +839,8 @@ class PPPoE
             $ip->ensurePool($remoteAddress, $options['pool_ranges']);
         }
 
-        // 3. Generate authentic Mikhmon on-up script
-        $onUp = $this->generateMikhmonPppOnUpScript($validity);
+        // 3. Generate authentic on-up script
+        $onUp = $this->generatePppOnUpScript($validity);
 
         // 4. Create or update customer profile
         $params = [
@@ -838,7 +874,21 @@ class PPPoE
     }
 
     /**
-     * Generate complete RouterOS CLI script commands for Mikhmon PPP configuration.
+     * Backward compatibility alias for setupCustomerProfile.
+     */
+    public function setupMikhmonCustomerProfile(
+        string $name = 'P3',
+        string $rateLimit = '3M/3M',
+        string $localAddress = '192.168.100.1',
+        string $remoteAddress = 'isolir',
+        string $validity = '30d',
+        array $options = []
+    ): array {
+        return $this->setupCustomerProfile($name, $rateLimit, $localAddress, $remoteAddress, $validity, $options);
+    }
+
+    /**
+     * Generate complete RouterOS CLI script commands for PPP configuration.
      * Includes /ip pool, /ppp profiles (isolir & customer), and /system scheduler isolir.
      *
      * @param string $customerProfile Customer profile name (default 'P3')
@@ -849,7 +899,7 @@ class PPPoE
      * @param array $options Extra parameters
      * @return string
      */
-    public function generateMikhmonPppCliCommands(
+    public function generatePppCliCommands(
         string $customerProfile = 'P3',
         string $rateLimit = '3M/3M',
         string $localAddress = '192.168.100.1',
@@ -863,10 +913,10 @@ class PPPoE
         $isolirLocalIp = $options['isolir_local_ip'] ?? '10.10.10.255';
         $isolirRate = $options['isolir_rate'] ?? '512k/512k';
 
-        $onUp = $this->generateMikhmonPppOnUpScript($validity);
+        $onUp = $this->generatePppOnUpScript($validity);
         $escapedOnUp = str_replace('"', '\"', $onUp);
 
-        $schedScript = $this->generateMikhmonPppoeIsolirSchedulerScript();
+        $schedScript = $this->generateIsolirSchedulerScript();
         $escapedSched = str_replace('"', '\"', $schedScript);
 
         $cmd = "/ppp profiles\n";
@@ -886,6 +936,20 @@ class PPPoE
     }
 
     /**
+     * Backward compatibility alias for generatePppCliCommands.
+     */
+    public function generateMikhmonPppCliCommands(
+        string $customerProfile = 'P3',
+        string $rateLimit = '3M/3M',
+        string $localAddress = '192.168.100.1',
+        string $remoteAddress = 'isolir',
+        string $validity = '30d',
+        array $options = []
+    ): string {
+        return $this->generatePppCliCommands($customerProfile, $rateLimit, $localAddress, $remoteAddress, $validity, $options);
+    }
+
+    /**
      * Generate RouterOS auto-isolation script for PPPoE secrets (Backward compatibility).
      *
      * @param string $isolateProfile
@@ -893,7 +957,7 @@ class PPPoE
      */
     public function generatePppoeIsolirScript(string $isolateProfile = 'ISOLIR'): string
     {
-        return $this->generateMikhmonPppoeIsolirSchedulerScript();
+        return $this->generateIsolirSchedulerScript();
     }
 
     /**
@@ -908,11 +972,11 @@ class PPPoE
         if ($interval === '1h') {
             $interval = '01:00:00';
         }
-        return $this->installMikhmonPppoeIsolirScheduler($interval);
+        return $this->installIsolirScheduler($interval);
     }
 
     /**
-     * Setup Mikhmon-style official PPPoE Isolir Profile with pool, rate-limit, and automated background scheduler.
+     * Setup official PPPoE Isolir Profile with pool, rate-limit, and automated background scheduler.
      *
      * @param string $name Profile name (default 'isolir')
      * @param array $options [
@@ -924,14 +988,22 @@ class PPPoE
      * ]
      * @return array
      */
-    public function setupMikhmonIsolirProfile(string $name = 'isolir', array $options = []): array
+    public function setupIsolirProfile(string $name = 'isolir', array $options = []): array
     {
         $poolRanges = $options['pool_ranges'] ?? '10.10.10.2-10.10.10.254';
         $localAddress = $options['local_address'] ?? '10.10.10.255';
         $rateLimit = $options['rate_limit'] ?? '512k/512k';
         $dnsServer = $options['dns_server'] ?? '8.8.8.8,8.8.4.4';
 
-        return $this->installMikhmonIsolirInfrastructure($poolRanges, $localAddress, $rateLimit, $dnsServer);
+        return $this->installIsolirInfrastructure($poolRanges, $localAddress, $rateLimit, $dnsServer);
+    }
+
+    /**
+     * Backward compatibility alias for setupIsolirProfile.
+     */
+    public function setupMikhmonIsolirProfile(string $name = 'isolir', array $options = []): array
+    {
+        return $this->setupIsolirProfile($name, $options);
     }
 
     /**

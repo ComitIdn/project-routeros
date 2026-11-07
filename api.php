@@ -203,6 +203,7 @@ try {
             Response::json($res, 201, "Hotspot profile {$name} created with automated on-login expiry");
             break;
 
+        case 'hotspot_setup_profile':
         case 'hotspot_setup_mikhmon':
             $name = $request['name'] ?? '';
             if (empty($name)) {
@@ -218,7 +219,7 @@ try {
             $addressPool = $request['address_pool'] ?? ($request['pool'] ?? 'none');
             $sharedUsers = (string)($request['shared_users'] ?? '1');
 
-            $res = $ros->hotspot()->setupMikhmonProfile(
+            $res = $ros->hotspot()->setupProfile(
                 $name,
                 $rate,
                 $validity,
@@ -231,7 +232,7 @@ try {
                 $sharedUsers,
                 $request['options'] ?? []
             );
-            Response::json($res, 201, "Mikhmon official Hotspot profile {$name} configured with parent-queue, address-pool and on-login script");
+            Response::json($res, 201, "Hotspot profile {$name} configured with parent-queue, address-pool and on-login script");
             break;
 
         case 'hotspot_generate_script':
@@ -449,22 +450,23 @@ try {
             Response::json($res, 200, "Bound {$user} to MAC {$mac}");
             break;
 
+        case 'pppoe_setup_isolir':
         case 'pppoe_setup_mikhmon':
-            $profileName = $request['profile'] ?? 'ISOLIR';
+            $profileName = $request['profile'] ?? 'isolir';
             $options = $request['options'] ?? [
-                'local_address'      => $request['local_address'] ?? '10.0.99.1',
-                'remote_address'     => $request['remote_address'] ?? '10.0.99.2-10.0.99.254',
-                'rate_limit'         => $request['rate_limit'] ?? '128k/128k',
-                'address_list'       => $request['address_list'] ?? 'ISOLIR_LIST',
-                'nat_redirect'       => isset($request['nat_redirect']) ? (bool)$request['nat_redirect'] : true,
+                'local_address'      => $request['local_address'] ?? '10.10.10.255',
+                'pool_ranges'        => $request['pool_ranges'] ?? '10.10.10.2-10.10.10.254',
+                'rate_limit'         => $request['rate_limit'] ?? '512k/512k',
+                'dns_server'         => $request['dns_server'] ?? '8.8.8.8,8.8.4.4',
                 'install_scheduler'  => isset($request['install_scheduler']) ? (bool)$request['install_scheduler'] : true,
-                'scheduler_interval' => $request['scheduler_interval'] ?? '1h',
+                'scheduler_interval' => $request['scheduler_interval'] ?? '01:00:00',
             ];
-            $res = $ros->pppoe()->setupMikhmonIsolirProfile($profileName, $options);
-            Response::json($res, 201, "Mikhmon PPPoE Isolir profile and scheduler configured");
+            $res = $ros->pppoe()->setupIsolirProfile($profileName, $options);
+            Response::json($res, 201, "PPPoE Isolir profile and scheduler configured");
             break;
 
         case 'pppoe_customer_profile':
+        case 'pppoe_setup_customer':
             $name = $request['name'] ?? 'P3';
             $rate = $request['rate_limit'] ?? '3M/3M';
             $local = $request['local_address'] ?? '192.168.100.1';
@@ -476,25 +478,27 @@ try {
             if (isset($request['auto_isolir'])) $options['auto_isolir'] = (bool)$request['auto_isolir'];
             if (isset($request['pool_ranges'])) $options['pool_ranges'] = $request['pool_ranges'];
 
-            $res = $ros->pppoe()->setupMikhmonCustomerProfile($name, $rate, $local, $remote, $validity, $options);
-            Response::json($res, 201, "Mikhmon PPPoE customer profile {$name} configured with auto-isolir");
+            $res = $ros->pppoe()->setupCustomerProfile($name, $rate, $local, $remote, $validity, $options);
+            Response::json($res, 201, "PPPoE customer profile {$name} configured with auto-isolir");
             break;
 
+        case 'schedulers':
+        case 'install_schedulers':
         case 'mikhmon_schedulers':
             $type = $request['type'] ?? 'all';
             $sub = $request['sub_action'] ?? 'install';
             if ($sub === 'get') {
-                $scheds = \RouterOSFramework\Core\Mikhmon::getAllSchedulers();
-                Response::json($scheds, 200, "Mikhmon schedulers definitions retrieved");
+                $scheds = \RouterOSFramework\Core\AutomationEngine::getAllSchedulers();
+                Response::json($scheds, 200, "Core schedulers definitions retrieved");
             } else {
                 $results = [];
                 if ($type === 'all' || $type === 'hotspot') {
-                    $results['hotspot'] = $ros->hotspot()->installMikhmonCoreSchedulers();
+                    $results['hotspot'] = $ros->hotspot()->installCoreSchedulers();
                 }
                 if ($type === 'all' || $type === 'pppoe') {
-                    $results['pppoe'] = $ros->pppoe()->installMikhmonPppoeIsolirScheduler();
+                    $results['pppoe'] = $ros->pppoe()->installIsolirScheduler();
                 }
-                Response::json($results, 201, "Mikhmon schedulers installed/updated on RouterOS");
+                Response::json($results, 201, "Core schedulers installed/updated on RouterOS");
             }
             break;
 
@@ -509,10 +513,12 @@ try {
             Response::json($res, 201, "IP pool {$poolName} ensured on RouterOS");
             break;
 
+        case 'setup_all':
+        case 'bootstrap_all':
         case 'mikhmon_setup_all':
             $config = $request['config'] ?? $request;
-            $res = $ros->setupMikhmonAll($config);
-            Response::json($res, 201, "Mikhmon official infrastructure bootstrapped successfully");
+            $res = $ros->setupAll($config);
+            Response::json($res, 201, "Complete automation infrastructure bootstrapped successfully");
             break;
 
         case 'pppoe_reconnect':

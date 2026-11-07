@@ -774,19 +774,19 @@ class Hotspot
     }
 
     /**
-     * Generate 100% authentic Mikhmon Official On-Login Script for Hotspot User Profile.
-     * Matches Mikhmon Official v3 / v4 script generator character-by-character.
+     * Generate authentic RouterOS On-Login Script for Hotspot User Profile.
+     * Universal, global lifecycle management (clock detection, leap year handling, notice/remove modes).
      *
-     * @param string $name Profile name (e.g. 'V24h', 'V30D')
+     * @param string $name Profile name (e.g. 'V15D', 'V24h', 'V30D')
      * @param string $validity Validity string (e.g. '24h', '30d', '1d', '3h')
      * @param int|float $price Base / purchase price (e.g. 8000)
      * @param int|float|null $sellingPrice Selling price to customer (e.g. 10000)
      * @param string $expiryMode 'remc' (Remove & Record), 'ntfc' (Notice & Record), 'rem', 'ntf'
      * @param string $lockUser 'Disable' or 'Enable'
-     * @param array $options Extra parameters ('grace_period', 'session_id', 'source')
+     * @param array $options Extra parameters ('grace_period', 'session_id', 'source', 'tag', 'comment_tag')
      * @return string
      */
-    public function generateMikhmonOfficialOnLoginScript(
+    public function generateOfficialOnLoginScript(
         string $name,
         string $validity = '24h',
         $price = 0,
@@ -824,12 +824,29 @@ class Hotspot
         $grace = $options['grace_period'] ?? '';
         $sessionId = $options['session_id'] ?? rand(1000000, 9999999);
         $scriptSource = $options['source'] ?? (str_ends_with($validity, 'd') && (int)$validity >= 30 ? '$month$year' : '$date');
+        $tag = $options['tag'] ?? 'routeros';
+        $commentTag = $options['comment_tag'] ?? $tag;
 
-        return ':put (",' . $expModeTag . ',' . $price . ',' . $validity . ',' . $sPrice . ',' . $grace . ',' . $lock . ',,mikhmon,' . $sessionId . ',"); :local mode "' . $modeChar . '"; {:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; :local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; :local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; :local validity "' . $validity . '";  :local date [ /system clock get date ]; if ([:pick $date 4 5] = "-" and [:pick $date 7 8] = "-" ) do={:set date [$convert date=$date];} else={:set date $date;};  :local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];  :local time [ /system clock get time ]; :local comment [/ip hotspot user get $user comment]; :local ucode [:pic $comment 0 2]; :if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; :if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; :if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; /ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-' . $price . '-|-$address-|-$mac-|-' . $validity . '-|-' . $name . '-|-$comment" owner="$month$year" source="' . $scriptSource . '" comment="mikhmon"}}';
+        return ':put (",' . $expModeTag . ',' . $price . ',' . $validity . ',' . $sPrice . ',' . $grace . ',' . $lock . ',,' . $tag . ',' . $sessionId . ',"); :local mode "' . $modeChar . '"; {:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; :local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; :local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; :local validity "' . $validity . '";  :local date [ /system clock get date ]; if ([:pick $date 4 5] = "-" and [:pick $date 7 8] = "-" ) do={:set date [$convert date=$date];} else={:set date $date;};  :local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];  :local time [ /system clock get time ]; :local comment [/ip hotspot user get $user comment]; :local ucode [:pic $comment 0 2]; :if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; :if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; :if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; /ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-' . $price . '-|-$address-|-$mac-|-' . $validity . '-|-' . $name . '-|-$comment" owner="$month$year" source="' . $scriptSource . '" comment="' . $commentTag . '"}}';
     }
 
     /**
-     * Generate raw MikroTik CLI command for creating the exact Mikhmon user profile.
+     * Backward compatibility alias for generateOfficialOnLoginScript.
+     */
+    public function generateMikhmonOfficialOnLoginScript(
+        string $name,
+        string $validity = '24h',
+        $price = 0,
+        $sellingPrice = null,
+        string $expiryMode = 'remc',
+        string $lockUser = 'Disable',
+        array $options = []
+    ): string {
+        return $this->generateOfficialOnLoginScript($name, $validity, $price, $sellingPrice, $expiryMode, $lockUser, $options);
+    }
+
+    /**
+     * Generate raw MikroTik CLI command for creating the exact user profile.
      *
      * @param string $name
      * @param string $rateLimit
@@ -844,7 +861,7 @@ class Hotspot
      * @param array $options
      * @return string
      */
-    public function generateMikhmonProfileCliCommand(
+    public function generateProfileCliCommand(
         string $name,
         string $rateLimit = '3M/2M',
         string $validity = '24h',
@@ -857,7 +874,7 @@ class Hotspot
         string $sharedUsers = '1',
         array $options = []
     ): string {
-        $onLogin = $this->generateMikhmonOfficialOnLoginScript(
+        $onLogin = $this->generateOfficialOnLoginScript(
             $name,
             $validity,
             $price,
@@ -884,17 +901,44 @@ class Hotspot
     }
 
     /**
-     * Get array of all 5 official Mikhmon Hotspot core schedulers.
-     *
-     * @return array<string, array>
+     * Backward compatibility alias for generateProfileCliCommand.
      */
-    public function getMikhmonCoreSchedulers(): array
-    {
-        return \RouterOSFramework\Core\Mikhmon::getCoreHotspotSchedulers();
+    public function generateMikhmonProfileCliCommand(
+        string $name,
+        string $rateLimit = '3M/2M',
+        string $validity = '24h',
+        $price = 0,
+        $sellingPrice = null,
+        string $expiryMode = 'remc',
+        string $lockUser = 'Disable',
+        string $parentQueue = 'none',
+        string $addressPool = 'none',
+        string $sharedUsers = '1',
+        array $options = []
+    ): string {
+        return $this->generateProfileCliCommand($name, $rateLimit, $validity, $price, $sellingPrice, $expiryMode, $lockUser, $parentQueue, $addressPool, $sharedUsers, $options);
     }
 
     /**
-     * Install or update the 5 official Mikhmon Hotspot core schedulers:
+     * Get array of all 5 official Hotspot core schedulers.
+     *
+     * @return array<string, array>
+     */
+    public function getCoreSchedulers(): array
+    {
+        return \RouterOSFramework\Core\AutomationEngine::getCoreHotspotSchedulers();
+    }
+
+    /**
+     * Backward compatibility alias for getCoreSchedulers.
+     */
+    public function getMikhmonCoreSchedulers(): array
+    {
+        return $this->getCoreSchedulers();
+    }
+
+    /**
+     * Install or update the 5 official Hotspot core schedulers:
      * - autoremove-report (cleans >3-month sales reports)
      * - Expire-Monitor (v2603001) (checks certificates & expires/removes hotspot users)
      * - Live-Report-Monitor (v2608001) (live daily & monthly sales report calculation)
@@ -903,9 +947,9 @@ class Hotspot
      *
      * @return array<string, array>
      */
-    public function installMikhmonCoreSchedulers(): array
+    public function installCoreSchedulers(): array
     {
-        $scheds = \RouterOSFramework\Core\Mikhmon::getCoreHotspotSchedulers();
+        $scheds = \RouterOSFramework\Core\AutomationEngine::getCoreHotspotSchedulers();
         $results = [];
         $system = new System($this->conn, $this->db);
         foreach ($scheds as $schedName => $cfg) {
@@ -922,9 +966,17 @@ class Hotspot
     }
 
     /**
-     * Setup 100% authentic Mikhmon Official Hotspot user profile in RouterOS.
-     * Compatible with Mikhmon v3/v4 official scripts, parent queues, address pool dropdowns,
-     * MAC cookie retention, and automatic background scheduler installation.
+     * Backward compatibility alias for installCoreSchedulers.
+     */
+    public function installMikhmonCoreSchedulers(): array
+    {
+        return $this->installCoreSchedulers();
+    }
+
+    /**
+     * Setup authentic Hotspot user profile in RouterOS.
+     * Compatible with parent queues, address pool dropdowns, MAC cookie retention,
+     * and automatic background scheduler installation.
      *
      * @param string $name Profile name (e.g. 'V15D', 'V24h', 'V30D')
      * @param string $rateLimit Bandwidth limit (e.g. '3M/2M', '2M/5M')
@@ -936,10 +988,10 @@ class Hotspot
      * @param string $parentQueue 'none' or simple queue name
      * @param string $addressPool 'none' or pool name (e.g. from /ip pool print)
      * @param string $sharedUsers Shared users count (default '1')
-     * @param array $options Extra parameters ('grace_period', 'session_id', 'source', 'install_schedulers', 'pool_ranges', 'add_mac_cookie', 'mac_cookie_timeout', 'insert_queue_before')
+     * @param array $options Extra parameters ('grace_period', 'session_id', 'source', 'install_schedulers', 'pool_ranges', 'add_mac_cookie', 'mac_cookie_timeout', 'insert_queue_before', 'tag')
      * @return array
      */
-    public function setupMikhmonProfile(
+    public function setupProfile(
         string $name,
         string $rateLimit,
         string $validity = '24h',
@@ -985,7 +1037,7 @@ class Hotspot
             $ip->ensurePool($pool, $options['pool_ranges']);
         }
 
-        $onLogin = $this->generateMikhmonOfficialOnLoginScript(
+        $onLogin = $this->generateOfficialOnLoginScript(
             $name,
             $validity,
             $price,
@@ -1017,11 +1069,11 @@ class Hotspot
             $res = $this->conn->write('/ip/hotspot/user/profile/add', $params);
         }
 
-        // Automatically install official Mikhmon schedulers on RouterOS
+        // Automatically install official core schedulers on RouterOS
         $installSchedulers = $options['install_schedulers'] ?? true;
         $schedResults = null;
         if ($installSchedulers) {
-            $schedResults = $this->installMikhmonCoreSchedulers();
+            $schedResults = $this->installCoreSchedulers();
         }
 
         // Backward compatibility fallback cleaner scheduler
@@ -1045,6 +1097,37 @@ class Hotspot
             'schedulers'    => $schedResults,
             'result'        => $res,
         ];
+    }
+
+    /**
+     * Backward compatibility alias for setupProfile.
+     */
+    public function setupMikhmonProfile(
+        string $name,
+        string $rateLimit,
+        string $validity = '24h',
+        $price = 0,
+        $sellingPriceOrExpiryMode = null,
+        $expiryModeOrOptions = 'remc',
+        string $lockUser = 'Disable',
+        string $parentQueue = 'none',
+        string $addressPool = 'none',
+        string $sharedUsers = '1',
+        array $options = []
+    ): array {
+        return $this->setupProfile(
+            $name,
+            $rateLimit,
+            $validity,
+            $price,
+            $sellingPriceOrExpiryMode,
+            $expiryModeOrOptions,
+            $lockUser,
+            $parentQueue,
+            $addressPool,
+            $sharedUsers,
+            $options
+        );
     }
 
     /**

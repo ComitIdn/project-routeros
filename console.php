@@ -228,6 +228,8 @@ switch ($command) {
         echo !isset($res['error']) ? "⛔ Pelanggan '{$user}' diisolir ({$reason})\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
+    case 'hotspot:profile':
+    case 'profile:hotspot':
     case 'mikhmon:hotspot':
         $profile = $args[1] ?? 'V24h';
         $rate = $args[2] ?? '3M/2M';
@@ -240,7 +242,7 @@ switch ($command) {
         $queue = $args[9] ?? 'none';
         $shared = $args[10] ?? '1';
 
-        $res = $ros->hotspot()->setupMikhmonProfile(
+        $res = $ros->hotspot()->setupProfile(
             $profile,
             $rate,
             $validity,
@@ -253,7 +255,7 @@ switch ($command) {
             $shared
         );
 
-        echo "✨ Mikhmon Hotspot Profile Configured:\n";
+        echo "✨ Hotspot Profile Configured:\n";
         echo "   Name         : {$profile}\n";
         echo "   Rate Limit   : {$rate}\n";
         echo "   Validity     : {$validity}\n";
@@ -267,6 +269,7 @@ switch ($command) {
         echo "   RouterOS Res : " . json_encode($res['result'] ?? $res) . "\n";
         break;
 
+    case 'pools':
     case 'mikhmon:pools':
         $pools = $ros->hotspot()->getPoolList();
         echo "📋 Available IP Pools on RouterOS:\n";
@@ -275,6 +278,7 @@ switch ($command) {
         }
         break;
 
+    case 'queues':
     case 'mikhmon:queues':
         $queues = $ros->hotspot()->getParentQueueList();
         echo "📋 Available Parent Simple Queues on RouterOS:\n";
@@ -283,6 +287,8 @@ switch ($command) {
         }
         break;
 
+    case 'pppoe:profile':
+    case 'profile:pppoe':
     case 'mikhmon:pppoe':
         $profile = $args[1] ?? 'P3';
         $rate = $args[2] ?? '3M/3M';
@@ -290,8 +296,8 @@ switch ($command) {
         $remote = $args[4] ?? 'isolir';
         $validity = $args[5] ?? '30d';
 
-        $res = $ros->pppoe()->setupMikhmonCustomerProfile($profile, $rate, $local, $remote, $validity);
-        echo "✨ Mikhmon PPPoE Customer Profile Configured:\n";
+        $res = $ros->pppoe()->setupCustomerProfile($profile, $rate, $local, $remote, $validity);
+        echo "✨ PPPoE Customer Profile Configured:\n";
         echo "   Name         : {$profile}\n";
         echo "   Rate Limit   : {$rate}\n";
         echo "   Local Address: {$local}\n";
@@ -301,30 +307,35 @@ switch ($command) {
         echo "   RouterOS Res : " . json_encode($res['result'] ?? $res) . "\n";
         break;
 
+    case 'isolir':
+    case 'pppoe:isolir':
     case 'mikhmon:isolir':
         $poolRange = $args[1] ?? '10.10.10.2-10.10.10.254';
         $local = $args[2] ?? '10.10.10.255';
         $rate = $args[3] ?? '512k/512k';
-        $res = $ros->pppoe()->installMikhmonIsolirInfrastructure($poolRange, $local, $rate);
-        echo "✨ Mikhmon Isolir Infrastructure Configured:\n";
+        $res = $ros->pppoe()->installIsolirInfrastructure($poolRange, $local, $rate);
+        echo "✨ PPPoE Isolir Infrastructure Configured:\n";
         echo "   Pool isolir   : {$poolRange}\n";
         echo "   Profile isolir: {$rate} (GW: {$local})\n";
         echo "   Scheduler     : hourly at startup (drops active when overdue)\n";
         echo "   Result        : " . json_encode($res) . "\n";
         break;
 
+    case 'schedulers':
+    case 'schedulers:install':
+    case 'schedulers:list':
     case 'mikhmon:schedulers':
-        $action = $args[1] ?? 'install';
+        $action = $args[1] ?? ($command === 'schedulers:list' ? 'list' : 'install');
         if ($action === 'list') {
-            $scheds = \RouterOSFramework\Core\Mikhmon::getAllSchedulers();
-            echo "📋 Mikhmon Schedulers Registry (Total: " . count($scheds) . "):\n";
+            $scheds = \RouterOSFramework\Core\AutomationEngine::getAllSchedulers();
+            echo "📋 Core Schedulers Registry (Total: " . count($scheds) . "):\n";
             foreach ($scheds as $k => $s) {
                 echo "   - [{$k}] Interval: {$s['interval']} | Start: {$s['start-time']} | {$s['comment']}\n";
             }
         } else {
-            $hRes = $ros->hotspot()->installMikhmonCoreSchedulers();
-            $pRes = $ros->pppoe()->installMikhmonPppoeIsolirScheduler();
-            echo "✨ Mikhmon Schedulers Installed on RouterOS:\n";
+            $hRes = $ros->hotspot()->installCoreSchedulers();
+            $pRes = $ros->pppoe()->installIsolirScheduler();
+            echo "✨ Core Schedulers Installed on RouterOS:\n";
             echo "   [1] autoremove-report      : " . json_encode($hRes['autoremove-report'] ?? 'ok') . "\n";
             echo "   [2] Expire-Monitor         : " . json_encode($hRes['Expire-Monitor'] ?? 'ok') . "\n";
             echo "   [3] Live-Report-Monitor    : " . json_encode($hRes['Live-Report-Monitor'] ?? 'ok') . "\n";
@@ -334,9 +345,11 @@ switch ($command) {
         }
         break;
 
+    case 'setup-all':
+    case 'bootstrap':
     case 'mikhmon:setup-all':
-        echo "🚀 Bootstrapping full Mikhmon official ecosystem on RouterOS...\n";
-        $res = $ros->setupMikhmonAll([
+        echo "🚀 Bootstrapping complete automation ecosystem on RouterOS...\n";
+        $res = $ros->setupAll([
             'hotspot_profile' => [
                 'name'         => $args[1] ?? 'V15D',
                 'rate_limit'   => '3M/2M',
@@ -538,11 +551,14 @@ switch ($command) {
         echo "  php console.php ptmp channel [iface] [freq] - Ganti frekuensi AP\n";
         echo "  php console.php ptmp protocol [iface] [nv2] - Ganti mode NV2/Nstreme\n";
         echo "  php console.php voucher [qty] [prof] [jam]  - Buat voucher Hotspot instan\n";
-        echo "  php console.php mikhmon:hotspot [prof] [rate] [validity] [harga] - Setup Mikhmon Hotspot Profile & On-Login\n";
-        echo "  php console.php mikhmon:pppoe [isolir]      - Setup Mikhmon PPPoE Profile, NAT & Auto-Isolir Scheduler\n";
+        echo "  php console.php hotspot:profile [prof] [rate] [validity] [harga] - Setup Hotspot Profile & On-Login\n";
+        echo "  php console.php pppoe:profile [prof] [rate] [local] [remote]   - Setup PPPoE Customer Profile & Auto-Isolir\n";
+        echo "  php console.php isolir [pool_range] [gw] [rate]               - Setup Isolir Pool, Profile & Hourly Scheduler\n";
+        echo "  php console.php schedulers [install|list]                     - Pasang / cek 6 Core Automation Schedulers\n";
+        echo "  php console.php setup-all                                     - 1-Klik Bootstrap Seluruh Ekosistem Otomasi\n";
         echo "  php console.php suspend [user]              - Isolir pelanggan PPPoE manual\n";
         echo "  php console.php unsuspend [user]            - Buka isolir pelanggan PPPoE\n";
-        echo "  php console.php reconnect [user] [prof] [due] - Reaktivasi pelanggan pasca bayar (Mikhmon style)\n";
+        echo "  php console.php reconnect [user] [prof] [due] - Reaktivasi pelanggan pasca bayar\n";
         echo "  php console.php isolate [user] [alasan]     - Isolir pelanggan dengan alasan tercatat\n";
         echo "  php console.php kick [user]                 - Putuskan sesi user aktif\n";
         echo "  php console.php setlimit [user] [limit]     - Ubah limit uptime/bytes user\n";

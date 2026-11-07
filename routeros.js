@@ -453,6 +453,14 @@
             this.logger.info(`Terminal CLI: ${cliCommand}`);
             return this.request('terminal', 'POST', { cmd: cliCommand });
         }
+
+        async setupAll(config = {}) {
+            return this.request('setup_all', 'POST', config);
+        }
+
+        async setupMikhmonAll(config = {}) {
+            return this.setupAll(config);
+        }
     }
 
     /**
@@ -604,7 +612,7 @@
         async setName(oldNameOrId, newName) {
             return this.ros.set('ip/hotspot/user', oldNameOrId, { name: newName });
         }
-        async setupMikhmonProfile(name, rateLimit = '3M/2M', validity = '24h', price = 8000, options = {}) {
+        async setupProfile(name, rateLimit = '3M/2M', validity = '24h', price = 8000, options = {}) {
             const sprice = options.sellingPrice || options.selling_price || 10000;
             const mode = options.expiryMode || options.expiry_mode || 'remc';
             const lock = options.lockUser || options.lock_user || 'Disable';
@@ -614,11 +622,12 @@
             const addMacCookie = options.addMacCookie || options.add_mac_cookie || 'yes';
             const macCookieTimeout = options.macCookieTimeout || options.mac_cookie_timeout || '1d 00:00:00';
             const insertQueueBefore = options.insertQueueBefore || options.insert_queue_before || 'bottom';
+            const tag = options.tag || 'routeros';
             const modeChar = mode.toLowerCase().includes('n') ? 'N' : 'R';
             const sessionId = options.sessionId || Math.floor(1000000 + Math.random() * 9000000);
             const source = (validity.endsWith('d') && parseInt(validity) >= 30) ? '$month$year' : '$date';
 
-            const onLogin = `:put (",${mode},${price},${validity},${sprice},,${lock},,mikhmon,${sessionId},"); :local mode "${modeChar}"; {:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; :local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; :local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; :local validity "${validity}";  :local date [ /system clock get date ]; if ([:pick $date 4 5] = "-" and [:pick $date 7 8] = "-" ) do={:set date [$convert date=$date];} else={:set date $date;};  :local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];  :local time [ /system clock get time ]; :local comment [/ip hotspot user get $user comment]; :local ucode [:pic $comment 0 2]; :if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; :if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; :if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; /ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-${price}-|-$address-|-$mac-|-${validity}-|-` + name + `-|-$comment" owner="$month$year" source="${source}" comment="mikhmon"}}`;
+            const onLogin = `:put (",${mode},${price},${validity},${sprice},,${lock},,${tag},${sessionId},"); :local mode "${modeChar}"; {:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; :local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; :local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; :local validity "${validity}";  :local date [ /system clock get date ]; if ([:pick $date 4 5] = "-" and [:pick $date 7 8] = "-" ) do={:set date [$convert date=$date];} else={:set date $date;};  :local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];  :local time [ /system clock get time ]; :local comment [/ip hotspot user get $user comment]; :local ucode [:pic $comment 0 2]; :if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; :if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; :if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; /ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-${price}-|-$address-|-$mac-|-${validity}-|-` + name + `-|-$comment" owner="$month$year" source="${source}" comment="${tag}"}}`;
 
             const params = {
                 name,
@@ -632,6 +641,9 @@
                 'on-login': onLogin,
             };
             return this.ros.create('ip/hotspot/user/profile', params);
+        }
+        async setupMikhmonProfile(name, rateLimit = '3M/2M', validity = '24h', price = 8000, options = {}) {
+            return this.setupProfile(name, rateLimit, validity, price, options);
         }
     }
 
@@ -687,7 +699,7 @@
         async bindCallerId(username, macAddress) {
             return this.ros.set('ppp/secret', username, { 'caller-id': macAddress });
         }
-        async setupMikhmonCustomerProfile(name = 'P3', rateLimit = '3M/3M', localAddress = '192.168.100.1', remoteAddress = 'isolir', validity = '30d', options = {}) {
+        async setupCustomerProfile(name = 'P3', rateLimit = '3M/3M', localAddress = '192.168.100.1', remoteAddress = 'isolir', validity = '30d', options = {}) {
             const onUp = `:put (",isolir,${validity},");{:local date [ /system clock get date ];:local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];:local comment [ /ppp secret get [ /ppp secret find where name="$user" ] comment]; :local ucode [:pick $comment 0 5]; :local komen [:pick $comment 6 100];:if ($ucode = "lunas") do={ /sys scheduler add name="$user" disabled=no start-date=$date interval="${validity}"; :delay 2s; :local exp [ /sys scheduler get [ /sys scheduler find where name="$user" ] next-run]; :local getxp [len $exp]; :if ($getxp = 15) do={ :local d [:pick $exp 0 6]; :local t [:pick $exp 7 16]; :local s "/"; :local exp ("$d$s$year $t"); /ppp secret set comment="$exp | $komen" [find where name="$user"];}; :if ($getxp = 8) do={ /ppp secret set comment="$date $exp | $komen" [find where name="$user"];}; :if ($getxp > 15) do={ /ppp secret set comment="$exp | $komen" [find where name="$user"];}; /sys scheduler remove [find where name="$user"]; }}}}`;
             const params = {
                 name,
@@ -700,7 +712,10 @@
             };
             return this.ros.create('ppp/profile', params);
         }
-        async setupMikhmonIsolir(options = {}) {
+        async setupMikhmonCustomerProfile(name = 'P3', rateLimit = '3M/3M', localAddress = '192.168.100.1', remoteAddress = 'isolir', validity = '30d', options = {}) {
+            return this.setupCustomerProfile(name, rateLimit, localAddress, remoteAddress, validity, options);
+        }
+        async setupIsolir(options = {}) {
             const poolRange = options.pool_ranges || '10.10.10.2-10.10.10.254';
             const local = options.local_address || '10.10.10.255';
             const rate = options.rate_limit || '512k/512k';
@@ -713,6 +728,9 @@
                 'dns-server': '8.8.8.8,8.8.4.4',
                 comment: 'Profile untuk pelanggan yang diisolir',
             });
+        }
+        async setupMikhmonIsolir(options = {}) {
+            return this.setupIsolir(options);
         }
     }
 

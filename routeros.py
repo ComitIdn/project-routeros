@@ -273,6 +273,44 @@ class RouterOS:
             records.append(current)
         return records
 
+    def setup_all(self, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Setup core RouterOS infrastructure: Hotspot Profile, PPPoE Profile, Isolir Profile."""
+        opts = options or {}
+        res = {}
+        try:
+            res["hotspot_profile"] = self.hotspot.setup_profile(
+                opts.get("hotspot_profile", "V24h"),
+                rate_limit=opts.get("hotspot_rate", "3M/2M"),
+                validity=opts.get("hotspot_validity", "24h"),
+                price=opts.get("hotspot_price", 8000),
+                options=opts,
+            )
+        except Exception as e:
+            res["hotspot_profile_error"] = str(e)
+
+        try:
+            res["isolir_profile"] = self.pppoe.setup_isolir(opts)
+        except Exception as e:
+            res["isolir_profile_error"] = str(e)
+
+        try:
+            res["pppoe_profile"] = self.pppoe.setup_customer_profile(
+                opts.get("pppoe_profile", "P3"),
+                rate_limit=opts.get("pppoe_rate", "3M/3M"),
+                local_address=opts.get("pppoe_local", "192.168.100.1"),
+                remote_address=opts.get("pppoe_remote", "isolir"),
+                validity=opts.get("pppoe_validity", "30d"),
+                options=opts,
+            )
+        except Exception as e:
+            res["pppoe_profile_error"] = str(e)
+
+        return res
+
+    def setup_mikhmon_all(self, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Backwards compatibility alias for setup_all."""
+        return self.setup_all(options)
+
 
 class PtmpModule:
     """Multi-PTMP Routeros Connection Sub-module."""
@@ -341,7 +379,7 @@ class HotspotModule:
     def set_comment(self, username: str, comment: str) -> Any:
         return self.ros.set("/ip/hotspot/user", username, {"comment": comment})
 
-    def setup_mikhmon_profile(self, name: str, rate_limit: str = "3M/2M", validity: str = "24h", price: int = 8000, options: Optional[Dict[str, Any]] = None) -> Any:
+    def setup_profile(self, name: str, rate_limit: str = "3M/2M", validity: str = "24h", price: int = 8000, options: Optional[Dict[str, Any]] = None) -> Any:
         opts = options or {}
         sprice = opts.get("selling_price", 10000)
         mode = opts.get("expiry_mode", "remc")
@@ -349,13 +387,14 @@ class HotspotModule:
         queue = opts.get("parent_queue", "none")
         pool = opts.get("address_pool", "none")
         shared = str(opts.get("shared_users", "1"))
+        tag = opts.get("tag", "routeros")
         mode_char = "N" if "n" in mode.lower() else "R"
         session_id = opts.get("session_id", random.randint(1000000, 9999999))
         val_days = int(validity[:-1]) if validity.endswith("d") and validity[:-1].isdigit() else 0
         source = "$month$year" if val_days >= 30 else "$date"
 
         on_login = (
-            f':put (",{mode},{price},{validity},{sprice},,{lock},,mikhmon,{session_id},"); :local mode "{mode_char}"; '
+            f':put (",{mode},{price},{validity},{sprice},,{lock},,{tag},{session_id},"); :local mode "{mode_char}"; '
             '{:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; '
             ':local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; '
             ':local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; '
@@ -363,7 +402,7 @@ class HotspotModule:
             ':if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; '
             ':if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; '
             ':if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; '
-            f'/ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-{price}-|-$address-|-$mac-|-{validity}-|-{name}-|-$comment" owner="$month$year" source="{source}" comment="mikhmon"}}}}'
+            f'/ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-{price}-|-$address-|-$mac-|-{validity}-|-{name}-|-$comment" owner="$month$year" source="{source}" comment="{tag}"}}}}'
         )
 
         params = {
@@ -378,6 +417,10 @@ class HotspotModule:
             "on-login": on_login,
         }
         return self.ros.create("/ip/hotspot/user/profile", params)
+
+    def setup_mikhmon_profile(self, name: str, rate_limit: str = "3M/2M", validity: str = "24h", price: int = 8000, options: Optional[Dict[str, Any]] = None) -> Any:
+        """Backwards compatibility alias for setup_profile."""
+        return self.setup_profile(name, rate_limit, validity, price, options)
 
 
 class VoucherModule:
@@ -407,7 +450,7 @@ class PPPoEModule:
     def unsuspend(self, username: str, profile: str = "default") -> Any:
         return self.ros.set("/ppp/secret", username, {"profile": profile})
 
-    def setup_mikhmon_customer_profile(
+    def setup_customer_profile(
         self,
         name: str = "P3",
         rate_limit: str = "3M/3M",
@@ -438,7 +481,19 @@ class PPPoEModule:
         }
         return self.ros.create("/ppp/profile", params)
 
-    def setup_mikhmon_isolir(self, options: Optional[Dict[str, Any]] = None) -> Any:
+    def setup_mikhmon_customer_profile(
+        self,
+        name: str = "P3",
+        rate_limit: str = "3M/3M",
+        local_address: str = "192.168.100.1",
+        remote_address: str = "isolir",
+        validity: str = "30d",
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """Backwards compatibility alias for setup_customer_profile."""
+        return self.setup_customer_profile(name, rate_limit, local_address, remote_address, validity, options)
+
+    def setup_isolir(self, options: Optional[Dict[str, Any]] = None) -> Any:
         opts = options or {}
         pool_range = opts.get("pool_ranges", "10.10.10.2-10.10.10.254")
         local = opts.get("local_address", "10.10.10.255")
@@ -458,6 +513,10 @@ class PPPoEModule:
                 "comment": "Profile untuk pelanggan yang diisolir",
             },
         )
+
+    def setup_mikhmon_isolir(self, options: Optional[Dict[str, Any]] = None) -> Any:
+        """Backwards compatibility alias for setup_isolir."""
+        return self.setup_isolir(options)
 
 
 class SystemModule:
