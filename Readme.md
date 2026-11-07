@@ -65,6 +65,7 @@ project-routeros/
 ├── composer.json               # Dependensi & Autoloading PSR-4 + Laravel Auto-Discovery
 ├── example.php                 # Master Contoh Implementasi Bersih & Profesional
 ├── routeros.py                 # Universal Python 3 SDK & Standalone CLI
+├── routeros.js                 # Universal Master JavaScript SDK (Node.js & Browser)
 ├── mikrotik.php                # Alias Kompatibilitas ke Belakang (Forwarder ke example.php)
 ├── console.php                 # CLI Console Tool Interaktif untuk Terminal / Termux
 ├── api.php                     # Universal RESTful JSON API Endpoint (CORS Ready)
@@ -77,7 +78,8 @@ project-routeros/
 │   ├── 04_pppoe.php            # PPPoE secrets, static IP, billing overdue & auto-isolate
 │   ├── 05_actions.php          # Dedicated Actions: Finder, Setter, Getter, Printer
 │   ├── 06_multi_platform.php   # Panduan integrasi Laravel, CodeIgniter, JS SDK, CLI
-│   └── 07_ptmp_and_protocols.php # Multi-Protocol Transports & Multi-PTMP Wireless
+│   ├── 07_ptmp_and_protocols.php # Multi-Protocol Transports & Multi-PTMP Wireless
+│   └── 08_javascript_master.js # Master JavaScript Multi-Router Concurrent Pool & Debugger
 ├── assets/
 │   └── js/
 │       └── routeros.js         # Client-side JavaScript SDK Universal (Vanilla, Vue, React, Node)
@@ -313,30 +315,62 @@ python routeros.py read /ip/hotspot/user
 
 ---
 
-### 2. Client-side JavaScript SDK ([`assets/js/routeros.js`](file:///data/data/com.termux/files/home/project-routeros/assets/js/routeros.js))
-Mendukung Vanilla JS, React, Vue, Svelte, dan Node.js:
+### 2. Universal JavaScript & Node.js SDK ([`routeros.js`](file:///data/data/com.termux/files/home/project-routeros/routeros.js) & [`assets/js/routeros.js`](file:///data/data/com.termux/files/home/project-routeros/assets/js/routeros.js))
+Class JavaScript modern mandiri (*zero external npm dependencies*), mendukung **Node.js (CommonJS/ESM)**, **Browser (Vue, React, Svelte)**, dan **Next.js**:
 
-```html
-<script src="assets/js/routeros.js"></script>
-<script>
-const client = new RouterOSClient({ endpoint: '/api.php', protocol: 'rest' });
+#### A. Konfigurasi 1 Tempat (.env atau Config Object):
+```javascript
+const { RouterOS } = require('./routeros.js');
 
-async function init() {
-    // 1. Ambil data users & PTMP
-    const users = await client.hotspot.getUsers();
-    const stations = await client.ptmp.getStations();
-    
-    // 2. Ubah limit, kick, isolir langsung dari JS:
-    await client.hotspot.setLimit('budi', '2h');
-    await client.ptmp.kickStation('00:0C:42:AA:BB:CC');
-    await client.pppoe.suspend('client01');
+// Pilihan 1: Load otomatis dari file .env lokal (Zero-config)
+const ros = RouterOS.fromEnv('.env');
 
-    // 3. Generic CRUD
-    await client.create('/ip/address', { address: '10.0.0.1/24', interface: 'ether2' });
-    const data = await client.read('/system/resource');
-}
-init();
-</script>
+// Pilihan 2: Inisialisasi terpusat dengan Built-in Debugger & Benchmark Timer
+const ros = new RouterOS({
+    host: '192.168.88.1',
+    user: 'admin',
+    password: 'password',
+    protocol: 'rest',    // REST Native v7+ (Port 80/443) atau 'web_api'
+    timeout: 5000,
+    debug: true,         // Aktifkan Built-in Debugger mandiri
+    logLevel: 'debug',   // 'trace' | 'debug' | 'info' | 'warn' | 'error'
+    benchmark: true,     // Benchmark timer per query dalam milidetik (ms)
+});
+```
+
+#### B. Multi-Router Concurrent Connection Pool (Koneksi Simultan Paralel):
+```javascript
+// Daftarkan multiple router ke dalam pool
+ros.multi
+    .add('router_pusat', { host: '10.10.1.1', user: 'admin', password: 'xxx' })
+    .add('tower_utara',  { host: '10.10.2.1', user: 'admin', password: 'xxx' })
+    .add('tower_selatan', { host: '10.10.3.1', user: 'admin', password: 'xxx' });
+
+// 1. Query serentak secara bersamaan tanpa saling tunggu (Promise.allSettled)
+const allUsers = await ros.multi.concurrentRead('ip/hotspot/user');
+
+// 2. Health check serentak untuk memantau status CPU, latency, & uptime semua router
+const health = await ros.multi.healthCheck();
+console.table(health);
+```
+
+#### C. Operasi CRUD & PTMP Wireless dari JavaScript:
+```javascript
+// CRUD Primitives
+await ros.create('ip/address', { address: '10.0.0.1/24', interface: 'ether2' });
+const users = await ros.read('ip/hotspot/user', { profile: 'default' });
+await ros.set('ip/hotspot/user', 'budi', { 'limit-uptime': '2h' });
+await ros.remove('ip/hotspot/user', 'budi');
+
+// PTMP Wireless & Sinyal CPE
+const stations = await ros.ptmp.getStations('wlan1');
+await ros.ptmp.kickStation('00:0C:42:AA:BB:CC');
+await ros.ptmp.setChannel('wlan1', 5180, '5ghz-only-n');
+```
+
+Jalankan skrip demo:
+```bash
+node examples/08_javascript_master.js
 ```
 
 ---
