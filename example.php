@@ -87,7 +87,7 @@ echo "🔹 [Auto Detect]     \$ros->useAuto();   // Auto-detect port terbuka\n";
 |--------------------------------------------------------------------------
 | Mendukung 802.11, NV2 TDMA, Nstreme, 60GHz (w60g), dan WiFiWave2/WiFi 6.
 */
-echo "\n--- Multi-PTMP Wireless Management ---\n";
+echo "\n--- Multi-PTMP Routeros Connection Management ---\n";
 echo "🔹 [PTMP Stations]    \$stations = \$ros->ptmp()->getStations();\n";
 echo "🔹 [PTMP Metrics]     \$metrics  = \$ros->ptmp()->getStationQualityMetrics();\n";
 echo "🔹 [PTMP Access-List] \$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', null, '-80..120');\n";

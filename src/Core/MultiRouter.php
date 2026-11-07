@@ -53,6 +53,7 @@ class MultiRouter
 
         if (!isset($this->instances[$target])) {
             $config = $this->routers[$target];
+            $config['router_id'] = $target;
             if ($this->db) {
                 $config['database'] = [];
             }

@@ -7,7 +7,7 @@
  * 1. 1-Point Centralized Configuration (dari Object, .env, atau config.json)
  * 2. Self-Contained Built-in Debugger & Latency Benchmark Timer
  * 3. Concurrent Multi-Router Connection Pool (Parallel Querying via Promise.allSettled)
- * 4. Multi-PTMP Wireless Management
+ * 4. Multi-PTMP Routeros Connection Management
  * 5. Full Operational CRUD Actions (Create, Read, Write, Set, Remove, Toggle, Find)
  */
 

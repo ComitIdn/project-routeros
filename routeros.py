@@ -20,7 +20,7 @@ Usage in Python:
     ros.set("/ip/hotspot/user", "budi", {"limit-uptime": "2h", "comment": "VIP Client"})
     ros.remove("/ip/hotspot/user", "budi")
 
-    # Multi-PTMP Wireless Management
+    # Multi-PTMP Routeros Connection Management
     stations = ros.ptmp.get_stations()
     ros.ptmp.kick_station("AA:BB:CC:DD:EE:FF")
     ros.ptmp.set_channel("ptmp-ap", 5180)
@@ -275,7 +275,7 @@ class RouterOS:
 
 
 class PtmpModule:
-    """Multi-PTMP Wireless Management Sub-module."""
+    """Multi-PTMP Routeros Connection Sub-module."""
     def __init__(self, ros: RouterOS):
         self.ros = ros
 

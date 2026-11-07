@@ -1,6 +1,6 @@
 <?php
 /**
- * Contoh 07: Multi-Protocol Transports & Multi-PTMP Wireless Management
+ * Contoh 07: Multi-Protocol Transports & Multi-PTMP Routeros Connection Management
  *
  * Mendemonstrasikan:
  * 1. Multi-Protocol Connection (API, REST v7+, SSH CLI, Telnet CLI, Auto)
@@ -13,7 +13,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use RouterOSFramework\Core\RouterOS;
 
 echo "============================================================\n";
-echo "⚡ CONTOH 07: MULTI-PROTOCOL & MULTI-PTMP WIRELESS\n";
+echo "⚡ CONTOH 07: MULTI-PROTOCOL & MULTI-PTMP ROUTEROS CONNECTION\n";
 echo "============================================================\n\n";
 
 // 1. KONEKSI FLEKSIBEL DENGAN BERBAGAI PROTOKOL
@@ -74,7 +74,7 @@ $output = $ros->write()->terminal('/interface wireless print detail');
 echo "• Writer siap digunakan: \$ros->write()->terminal(\$cliCommand);\n\n";
 
 // 3. MULTI-PTMP (POINT-TO-MULTIPOINT) WIRELESS
-echo "--- 3. Multi-PTMP Wireless Management ---\n";
+echo "--- 3. Multi-PTMP Routeros Connection Management ---\n";
 echo "Mendukung 802.11a/b/g/n/ac, NV2 TDMA, Nstreme, 60GHz, dan WiFiWave2/WiFi 6:\n";
 
 /*

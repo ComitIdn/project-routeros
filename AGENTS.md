@@ -36,6 +36,6 @@ You can delegate specialized review and testing tasks to subagents:
 
 1. **PHP Method Names**: PHP method names within the same class are **case-insensitive**. Never declare both `setName()` and `setname()`. Use camelCase for primary methods and forward aliases cleanly.
 2. **Multi-Protocol Transports**: Keep `TransportInterface` contract intact. Any new connection method must support API, REST, SSH, and Telnet without breaking backward-compatibility.
-3. **Multi-PTMP Wireless**: PTMP modules must support legacy 802.11, NV2 TDMA, Nstreme, 60GHz, and WiFiWave2/WiFi 6.
+3. **Multi-PTMP Routeros Connection**: PTMP modules must support legacy 802.11, NV2 TDMA, Nstreme, 60GHz, and WiFiWave2/WiFi 6.
 4. **Documentation Integrity**: Maintain clickable `file://...` links in artifacts, preserve all existing docstrings, and update `example.php`, `console.php`, `api.php`, and `Readme.md` when adding public methods.
 5. **Multi-Language Parity**: Features added to PHP Core should be mirrored in Python SDK (`routeros.py`) and JavaScript SDK (`assets/js/routeros.js`).

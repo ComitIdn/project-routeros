@@ -12,10 +12,232 @@ use RouterOSFramework\Core\RouterOS;
 class BotHandler
 {
     private RouterOS $ros;
+    private ?string $telegramToken = null;
+    private array $telegramChatIds = [];
+    private ?string $whatsAppApi = null;
+    private ?string $whatsAppToken = null;
+    private array $whatsAppRecipients = [];
 
     public function __construct(RouterOS $ros)
     {
         $this->ros = $ros;
+        $this->loadConfig();
+    }
+
+    /**
+     * Auto-load bot tokens and multi-recipient lists from config.
+     */
+    private function loadConfig(): void
+    {
+        $configFile = __DIR__ . '/../../config.php';
+        if (file_exists($configFile)) {
+            $cfg = require $configFile;
+            $botCfg = $cfg['bots'] ?? [];
+
+            $this->telegramToken = $botCfg['telegram_token'] ?? getenv('TELEGRAM_BOT_TOKEN') ?: null;
+
+            // Load single or multi Telegram chat IDs
+            if (!empty($botCfg['admin_chat_id'])) {
+                $this->addTelegramChatId((string)$botCfg['admin_chat_id'], 'admin');
+            }
+            if (!empty($botCfg['telegram_chat_ids']) && is_array($botCfg['telegram_chat_ids'])) {
+                foreach ($botCfg['telegram_chat_ids'] as $label => $id) {
+                    $this->addTelegramChatId((string)$id, (string)$label);
+                }
+            }
+
+            // Load WhatsApp API & multi-recipient phone numbers / groups
+            $this->whatsAppApi = $botCfg['whatsapp_api'] ?? null;
+            $this->whatsAppToken = $botCfg['whatsapp_token'] ?? null;
+            if (!empty($botCfg['whatsapp_recipients']) && is_array($botCfg['whatsapp_recipients'])) {
+                foreach ($botCfg['whatsapp_recipients'] as $label => $rec) {
+                    $this->addWhatsAppRecipient((string)$rec, (string)$label);
+                }
+            } elseif (!empty($botCfg['whatsapp_admin'])) {
+                $this->addWhatsAppRecipient((string)$botCfg['whatsapp_admin'], 'admin');
+            }
+        }
+    }
+
+    /**
+     * Register a Telegram Chat ID (Individual user, NOC group, or broadcast channel).
+     */
+    public function addTelegramChatId(string $chatId, string $label = 'default'): self
+    {
+        $this->telegramChatIds[$label] = trim($chatId);
+        return $this;
+    }
+
+    /**
+     * Register a WhatsApp Recipient (Phone number or Group JID).
+     */
+    public function addWhatsAppRecipient(string $phoneOrGroup, string $label = 'default'): self
+    {
+        $this->whatsAppRecipients[$label] = trim($phoneOrGroup);
+        return $this;
+    }
+
+    public function getTelegramChatIds(): array
+    {
+        return $this->telegramChatIds;
+    }
+
+    public function getWhatsAppRecipients(): array
+    {
+        return $this->whatsAppRecipients;
+    }
+
+    /**
+     * Send message via Telegram Bot API to a specific chat ID, or broadcast to all registered chat IDs.
+     *
+     * @param string $message
+     * @param null|string|array $chatIds If null, broadcasts to ALL registered chat IDs
+     * @return array
+     */
+    public function sendTelegram(string $message, $chatIds = null): array
+    {
+        $token = $this->telegramToken;
+        if (empty($token)) {
+            return ['success' => false, 'error' => 'Telegram Bot Token not configured.'];
+        }
+
+        $targets = [];
+        if ($chatIds === null) {
+            $targets = array_values($this->telegramChatIds);
+        } elseif (is_array($chatIds)) {
+            $targets = $chatIds;
+        } else {
+            $targets = [$chatIds];
+        }
+
+        $results = [];
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+
+        foreach ($targets as $chatId) {
+            if (empty($chatId)) continue;
+
+            $postData = [
+                'chat_id'    => $chatId,
+                'text'       => $message,
+                'parse_mode' => 'Markdown',
+            ];
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            $res = curl_exec($ch);
+            $err = curl_error($ch);
+            curl_close($ch);
+
+            $decoded = $res ? json_decode($res, true) : null;
+            $results[$chatId] = [
+                'ok'    => !empty($decoded['ok']),
+                'error' => $err ?: ($decoded['description'] ?? null),
+            ];
+        }
+
+        return ['sent' => count($results), 'targets' => $results];
+    }
+
+    /**
+     * Send message via WhatsApp Gateway to specific numbers, or broadcast to all registered numbers/groups.
+     *
+     * @param string $message
+     * @param null|string|array $recipients
+     * @return array
+     */
+    public function sendWhatsApp(string $message, $recipients = null): array
+    {
+        $apiUrl = $this->whatsAppApi;
+        if (empty($apiUrl)) {
+            return ['success' => false, 'error' => 'WhatsApp Gateway API URL not configured.'];
+        }
+
+        $targets = [];
+        if ($recipients === null) {
+            $targets = array_values($this->whatsAppRecipients);
+        } elseif (is_array($recipients)) {
+            $targets = $recipients;
+        } else {
+            $targets = [$recipients];
+        }
+
+        $results = [];
+        foreach ($targets as $to) {
+            if (empty($to)) continue;
+
+            $postData = [
+                'target'  => $to,
+                'to'      => $to,
+                'message' => $message,
+            ];
+
+            $headers = ['Content-Type: application/json'];
+            if (!empty($this->whatsAppToken)) {
+                $headers[] = "Authorization: {$this->whatsAppToken}";
+            }
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $apiUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            $res = curl_exec($ch);
+            $err = curl_error($ch);
+            curl_close($ch);
+
+            $results[$to] = ['response' => $res, 'error' => $err ?: null];
+        }
+
+        return ['sent' => count($results), 'targets' => $results];
+    }
+
+    /**
+     * Broadcast alert simultaneously to all registered Telegram and WhatsApp recipients.
+     *
+     * @param string $message
+     * @param array $channels ['telegram', 'whatsapp']
+     * @return array
+     */
+    public function broadcast(string $message, array $channels = ['telegram', 'whatsapp']): array
+    {
+        $report = [];
+        if (in_array('telegram', $channels)) {
+            $report['telegram'] = $this->sendTelegram($message);
+        }
+        if (in_array('whatsapp', $channels)) {
+            $report['whatsapp'] = $this->sendWhatsApp($message);
+        }
+        return $report;
+    }
+
+    /**
+     * Send formatted alert regarding a specific router device to all admins.
+     */
+    public function notifyRouterAlert(string $event, string $details = '', ?string $routerId = null): array
+    {
+        $rId = $routerId ?? $this->ros->getRouterId();
+        $icon = match(strtolower($event)) {
+            'offline', 'down', 'critical' => '🚨',
+            'warning', 'high_cpu', 'overdue' => '⚠️',
+            'online', 'up', 'recovery' => '🟢',
+            default => '📢',
+        };
+
+        $msg = "{$icon} *ROUTER ALERT: " . strtoupper($rId) . "*\n"
+             . "━━━━━━━━━━━━━━━━━━━━\n"
+             . "📌 *Event:* {$event}\n"
+             . "⏱️ *Waktu:* " . date('Y-m-d H:i:s') . "\n";
+        if (!empty($details)) {
+            $msg .= "ℹ️ *Detail:* {$details}\n";
+        }
+
+        return $this->broadcast($msg);
     }
 
     /**

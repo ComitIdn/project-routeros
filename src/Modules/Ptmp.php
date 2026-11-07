@@ -8,7 +8,7 @@ use RouterOSFramework\Core\Helper;
 
 /**
  * Class Ptmp
- * Advanced Multi-PTMP (Point-to-Multipoint) Wireless Management Module.
+ * Advanced Multi-PTMP (Point-to-Multipoint) Routeros Connection Module.
  * Supports MikroTik 802.11a/b/g/n/ac, NV2 TDMA, Nstreme, 60GHz (w60g), and WiFiWave2/WiFi 6.
  * Designed for WISP Towers, BTS APs, RT-RW Net Base Stations, and Client CPEs.
  */

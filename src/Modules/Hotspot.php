@@ -661,7 +661,7 @@ class Hotspot
     }
 
     /**
-     * Generate rock-solid on-login script for Hotspot user profile.
+     * Generate rock-solid on-login script for Hotspot user profile (Mikhmon Official Compatible).
      * Handles automatic expiry tracking from first login, MAC lock, and optional Telegram alert.
      * Compatible with both RouterOS v6.xx and v7.xx+.
      *
@@ -669,6 +669,8 @@ class Hotspot
      * @param array $options [
      *    'lock_mac'         => true,
      *    'track_expiry'     => true,
+     *    'expiry_mode'      => 'remove'|'notice'|'remove_record',
+     *    'price'            => 0,
      *    'telegram_token'   => string,
      *    'telegram_chat_id' => string,
      *    'custom_script'    => string,
@@ -679,12 +681,14 @@ class Hotspot
     {
         $lockMac = $options['lock_mac'] ?? true;
         $trackExpiry = $options['track_expiry'] ?? true;
+        $expiryMode = strtolower((string)($options['expiry_mode'] ?? 'remove'));
+        $price = (float)($options['price'] ?? 0);
         $tgToken = $options['telegram_token'] ?? '';
         $tgChat = $options['telegram_chat_id'] ?? '';
         $custom = $options['custom_script'] ?? '';
 
         $script = [];
-        $script[] = '# Project RouterOS Automated Hotspot On-Login Script';
+        $script[] = '# Project RouterOS Automated Hotspot On-Login Script (Mikhmon Style)';
         $script[] = ':local uName "$user";';
         $script[] = ':local uMac $"mac-address";';
         $script[] = ':local uIp "$address";';
@@ -703,15 +707,24 @@ class Hotspot
             $script[] = '    :local cDate [/system clock get date];';
             $script[] = '    :local cTime [/system clock get time];';
             $script[] = '    /ip hotspot user set [find name=$uName] comment=("$uComm exp:" . $cDate . " " . $cTime);';
-            $cleanOnEvent = '/ip hotspot active remove [find user=\"$uName\"]; /ip hotspot user remove [find name=\"$uName\"]; /system scheduler remove [find name=\"$uName\"];';
+
+            if ($expiryMode === 'notice') {
+                $cleanOnEvent = '/ip hotspot active remove [find user=\"$uName\"]; /ip hotspot user set [find name=\"$uName\"] comment=("$uComm exp:EXPIRED"); /system scheduler remove [find name=\"$uName\"];';
+            } elseif ($expiryMode === 'remove_record') {
+                $cleanOnEvent = ':log info ("Voucher " . $uName . " expired and recorded"); /ip hotspot active remove [find user=\"$uName\"]; /ip hotspot user remove [find name=\"$uName\"]; /system scheduler remove [find name=\"$uName\"];';
+            } else {
+                // Default: Remove
+                $cleanOnEvent = '/ip hotspot active remove [find user=\"$uName\"]; /ip hotspot user remove [find name=\"$uName\"]; /system scheduler remove [find name=\"$uName\"];';
+            }
+
             $script[] = '    /system scheduler add name=$uName start-date=$cDate start-time=$cTime interval="' . $validity . '" on-event="' . $cleanOnEvent . '" comment="Auto Expire ' . $validity . '";';
             $script[] = '}';
         }
 
         // 3. Telegram notification
         if (!empty($tgToken) && !empty($tgChat)) {
-            $tgMsg = "User+$user+Online+IP+$address+MAC+$uMac";
-            $script[] = '/tool fetch url="https://api.telegram.org/bot' . $tgToken . '/sendMessage?chat_id=' . $tgChat . '&text=' . $tgMsg . '" keep-result=no;';
+            $tgUrl = 'https://api.telegram.org/bot' . $tgToken . '/sendMessage?chat_id=' . $tgChat . '&text=User+$user+Online+IP+$address';
+            $script[] = '/tool fetch url="' . $tgUrl . '" keep-result=no;';
         }
 
         // 4. Custom scripting hook
@@ -720,6 +733,35 @@ class Hotspot
         }
 
         return implode("\n", $script);
+    }
+
+    /**
+     * Setup Mikhmon-style official Hotspot profile with complete on-login script & auto scheduler.
+     *
+     * @param string $name Profile name (e.g. '1JAM-2MB', '1HARI-5MB')
+     * @param string $rateLimit e.g. '1M/2M'
+     * @param string $validity e.g. '1h', '3h', '1d', '30d'
+     * @param int|float $price Voucher price
+     * @param string $expiryMode 'remove', 'notice', 'remove_record'
+     * @param array $options
+     * @return array
+     */
+    public function setupMikhmonProfile(
+        string $name,
+        string $rateLimit,
+        string $validity = '1d',
+        $price = 0,
+        string $expiryMode = 'remove',
+        array $options = []
+    ): array {
+        $options['price'] = $price;
+        $options['expiry_mode'] = $expiryMode;
+        $res = $this->createVoucherProfile($name, $rateLimit, $validity, $options);
+
+        // Also ensure background ghost session cleaner scheduler is installed
+        $this->installExpiryCleanupScheduler(5);
+
+        return $res;
     }
 
     /**

@@ -40,6 +40,8 @@ class RouterOS
     private ?Database $db = null;
     private JsonStorage $jsonStorage;
     private Cache $cache;
+    private string $routerId = 'default';
+    private ?RouterSession $session = null;
 
     // Module instances (lazy loaded)
     private ?Hotspot $hotspot = null;
@@ -77,9 +79,11 @@ class RouterOS
      */
     public function __construct(array $config = [])
     {
+        $this->routerId = (string)($config['router_id'] ?? ($config['id'] ?? ($config['name'] ?? ($config['host'] ?? 'default'))));
         $this->connection = new Connection($config);
         $this->jsonStorage = new JsonStorage();
-        $this->cache = new Cache();
+        $this->cache = (new Cache())->forRouter($this->routerId);
+        $this->session = new RouterSession($this->routerId);
 
         if (!empty($config['database']) && is_array($config['database'])) {
             $this->db = new Database($config['database']);
@@ -434,7 +438,7 @@ class RouterOS
         return $this->set()->password($username, $password, $path);
     }
 
-    public function setProfile(string $username, string $profile, string $path = '/ip/hotspot/user'): array
+    public function setProfile(string $username, string $profile, string $path = '/ip/hotspot/user/'): array
     {
         return $this->set()->profile($username, $profile, $path);
     }
@@ -443,5 +447,108 @@ class RouterOS
     {
         $query = new Query($command);
         return $this->connection->executeQuery($query);
+    }
+
+    // --- STRUCTURED ROUTER SESSION & MULTI-LOGGING PER ROUTER ID ---
+
+    public function session(): RouterSession
+    {
+        if ($this->session === null) {
+            $this->session = new RouterSession($this->routerId);
+        }
+        return $this->session;
+    }
+
+    public function getRouterId(): string
+    {
+        return $this->routerId;
+    }
+
+    public function setRouterId(string $id): self
+    {
+        $this->routerId = $id;
+        $this->cache = (new Cache())->forRouter($this->routerId);
+        $this->session = new RouterSession($this->routerId);
+        return $this;
+    }
+
+    /**
+     * Multi-logging per router ID.
+     * Simultaneously logs to the SQL activity_logs table (with router_id)
+     * and writes structured JSON log lines to database/logs/router_{id}.log.
+     *
+     * @param string $module
+     * @param string $action
+     * @param string|null $target
+     * @param string|null $details
+     * @param string $status
+     */
+    public function log(
+        string $module,
+        string $action,
+        ?string $target = null,
+        ?string $details = null,
+        string $status = 'success'
+    ): void {
+        // 1. SQL Database logging with router_id
+        if ($this->db) {
+            $dbRouterId = is_numeric($this->routerId) ? (int)$this->routerId : null;
+            $this->db->log($module, $action, $target, $details, $status, $dbRouterId);
+        }
+
+        // 2. Structured log file per router ID
+        $logDir = __DIR__ . '/../../database/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        $cleanId = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->routerId) ?: 'default';
+        $logFile = "{$logDir}/router_{$cleanId}.log";
+
+        $entry = json_encode([
+            'timestamp' => date('Y-m-d H:i:s'),
+            'router_id' => $this->routerId,
+            'module'    => $module,
+            'action'    => $action,
+            'target'    => $target,
+            'details'   => $details,
+            'status'    => $status,
+        ], JSON_UNESCAPED_SLASHES) . "\n";
+
+        @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Retrieve structured activity logs specifically for this router ID.
+     *
+     * @param int $limit
+     * @return array
+     */
+    public function getLogs(int $limit = 50): array
+    {
+        if ($this->db && is_numeric($this->routerId)) {
+            $dbLogs = $this->db->getRouterLogs((int)$this->routerId, $limit);
+            if (!empty($dbLogs)) {
+                return $dbLogs;
+            }
+        }
+
+        // Fallback: Read router-specific log file
+        $logDir = __DIR__ . '/../../database/logs';
+        $cleanId = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->routerId) ?: 'default';
+        $logFile = "{$logDir}/router_{$cleanId}.log";
+        if (!file_exists($logFile)) {
+            return [];
+        }
+
+        $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (!$lines) return [];
+
+        $logs = [];
+        $lines = array_reverse($lines);
+        foreach (array_slice($lines, 0, $limit) as $line) {
+            $item = json_decode($line, true);
+            if ($item) $logs[] = $item;
+        }
+        return $logs;
     }
 }

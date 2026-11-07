@@ -468,6 +468,18 @@ class Database
     }
 
     /**
+     * Get logs filtered by specific router ID.
+     *
+     * @param int|string $routerId
+     * @param int $limit
+     * @return array
+     */
+    public function getRouterLogs($routerId, int $limit = 50): array
+    {
+        return $this->select('activity_logs', 'router_id = :r', ['r' => $routerId], 'id DESC', $limit);
+    }
+
+    /**
      * Get database operational metrics and row counts.
      */
     public function stats(): array

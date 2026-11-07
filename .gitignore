@@ -7,6 +7,10 @@
 *.db
 /database/cache/*
 !/database/cache/.gitkeep
+/database/sessions/*
+!/database/sessions/.gitkeep
+/database/logs/*
+!/database/logs/.gitkeep
 /database/exports/*
 !/database/exports/.gitkeep
 

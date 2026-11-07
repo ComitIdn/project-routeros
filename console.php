@@ -205,7 +205,88 @@ switch ($command) {
         echo !isset($res['error']) ? "✅ Isolir pelanggan '{$user}' dibuka (Profile: {$profile})\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
-    // --- MULTI-PTMP WIRELESS COMMANDS ---
+    case 'reconnect':
+        $user = $args[1] ?? '';
+        $profile = $args[2] ?? 'default';
+        $dueDate = $args[3] ?? null;
+        if (!$user) {
+            echo "⚠️  Penggunaan: php console.php reconnect [pppoe_username] [profile] [optional:due_date]\n";
+            exit(1);
+        }
+        $res = $ros->pppoe()->reconnectCustomer($user, $profile, $dueDate);
+        echo !isset($res['error']) ? "🔄 Pelanggan '{$user}' berhasil diaktifkan kembali (Profile: {$profile}" . ($dueDate ? ", Jatuh Tempo: {$dueDate}" : "") . ")\n" : "❌ Gagal: {$res['error']}\n";
+        break;
+
+    case 'isolate':
+        $user = $args[1] ?? '';
+        $reason = $args[2] ?? 'Jatuh Tempo';
+        if (!$user) {
+            echo "⚠️  Penggunaan: php console.php isolate [pppoe_username] [optional:alasan]\n";
+            exit(1);
+        }
+        $res = $ros->pppoe()->isolateCustomer($user, 'ISOLIR', $reason);
+        echo !isset($res['error']) ? "⛔ Pelanggan '{$user}' diisolir ({$reason})\n" : "❌ Gagal: {$res['error']}\n";
+        break;
+
+    case 'mikhmon:hotspot':
+        $profile = $args[1] ?? '1JAM-2MB';
+        $rate = $args[2] ?? '2M/5M';
+        $validity = $args[3] ?? '1d';
+        $price = (float)($args[4] ?? 5000);
+        $res = $ros->hotspot()->setupMikhmonProfile($profile, $rate, $validity, $price, 'remove');
+        echo !isset($res['error']) ? "✨ Mikhmon Hotspot profile '{$profile}' ({$rate}, {$validity}, Rp{$price}) & Auto-Cleaner berhasil dipasang!\n" : "❌ Gagal: " . json_encode($res) . "\n";
+        break;
+
+    case 'mikhmon:pppoe':
+        $profile = $args[1] ?? 'ISOLIR';
+        $local = $args[2] ?? '10.0.99.1';
+        $remote = $args[3] ?? '10.0.99.2-10.0.99.254';
+        $res = $ros->pppoe()->setupMikhmonIsolirProfile($profile, [
+            'local_address'  => $local,
+            'remote_address' => $remote,
+        ]);
+        echo !isset($res['error']) ? "✨ Mikhmon PPPoE Isolir Profile '{$profile}' & Auto-Isolir Scheduler berhasil dipasang!\n" : "❌ Gagal: " . json_encode($res) . "\n";
+        break;
+
+    case 'broadcast':
+        $msg = $args[1] ?? '';
+        if (!$msg) {
+            echo "⚠️  Penggunaan: php console.php broadcast \"Pesan Pengumuman\"\n";
+            exit(1);
+        }
+        $res = $ros->bot()->broadcast($msg);
+        echo "📢 Hasil Broadcast:\n";
+        echo "   Telegram : " . ($res['telegram']['sent'] ?? 0) . "/" . ($res['telegram']['total'] ?? 0) . " terkirim\n";
+        echo "   WhatsApp : " . ($res['whatsapp']['sent'] ?? 0) . "/" . ($res['whatsapp']['total'] ?? 0) . " terkirim\n";
+        break;
+
+    case 'session':
+        $sess = $ros->session();
+        echo "🔐 Per-Router Isolated Session:\n";
+        echo "   Router ID  : " . $ros->getRouterId() . "\n";
+        echo "   Session ID : " . $sess->getSessionId() . "\n";
+        echo "   Token      : " . $sess->getToken() . "\n";
+        echo "   Status     : " . ($sess->isValid() ? 'Active / Valid' : 'Expired') . "\n";
+        echo "   Data       : " . json_encode($sess->all()) . "\n";
+        break;
+
+    case 'logs':
+        $limit = (int)($args[1] ?? 10);
+        $logs = $ros->getLogs($limit);
+        echo "📋 Multi-Logging History (Router ID: {$ros->getRouterId()} - Max {$limit}):\n";
+        echo sprintf("%-20s | %-12s | %-15s | %-30s\n", "Timestamp", "Category", "Action", "Details");
+        echo "------------------------------------------------------------------------------------\n";
+        foreach ($logs as $l) {
+            echo sprintf("%-20s | %-12s | %-15s | %-30s\n",
+                $l['timestamp'] ?? ($l['created_at'] ?? ''),
+                $l['category'] ?? '',
+                $l['action'] ?? '',
+                substr($l['details'] ?? ($l['message'] ?? ''), 0, 30)
+            );
+        }
+        break;
+
+    // --- MULTI-PTMP ROUTEROS CONNECTION COMMANDS ---
     case 'ptmp':
         $sub = strtolower($args[1] ?? 'stations');
         switch ($sub) {
@@ -338,19 +419,26 @@ switch ($command) {
         echo "Pilihan Perintah CLI:\n";
         echo "  php console.php status                      - Status & resource router\n";
         echo "  php console.php protocol [api|rest|ssh|telnet] - Ganti protokol koneksi\n";
-        echo "  php console.php ptmp stations               - Pantau sinyal & CPE PTMP\n";
+        echo "  php console.php session                     - Cek token & status sesi terisolasi per-router\n";
+        echo "  php console.php logs [limit]                - Multi-Logging per-router ID (DB & file)\n";
+        echo "  php console.php broadcast \"[pesan]\"         - Broadcast pesan ke Multi ChatId Telegram & WhatsApp\n";
+        echo "  php console.php ptmp stations               - Pantau sinyal & CPE PTMP Connection\n";
         echo "  php console.php ptmp metrics                - Ringkasan kualitas link PTMP\n";
         echo "  php console.php ptmp kick [mac]             - Kick CPE station tertentu\n";
         echo "  php console.php ptmp channel [iface] [freq] - Ganti frekuensi AP\n";
         echo "  php console.php ptmp protocol [iface] [nv2] - Ganti mode NV2/Nstreme\n";
         echo "  php console.php voucher [qty] [prof] [jam]  - Buat voucher Hotspot instan\n";
+        echo "  php console.php mikhmon:hotspot [prof] [rate] [validity] [harga] - Setup Mikhmon Hotspot Profile & On-Login\n";
+        echo "  php console.php mikhmon:pppoe [isolir]      - Setup Mikhmon PPPoE Profile, NAT & Auto-Isolir Scheduler\n";
+        echo "  php console.php suspend [user]              - Isolir pelanggan PPPoE manual\n";
+        echo "  php console.php unsuspend [user]            - Buka isolir pelanggan PPPoE\n";
+        echo "  php console.php reconnect [user] [prof] [due] - Reaktivasi pelanggan pasca bayar (Mikhmon style)\n";
+        echo "  php console.php isolate [user] [alasan]     - Isolir pelanggan dengan alasan tercatat\n";
         echo "  php console.php kick [user]                 - Putuskan sesi user aktif\n";
         echo "  php console.php setlimit [user] [limit]     - Ubah limit uptime/bytes user\n";
         echo "  php console.php setcomment [user] [teks]    - Ubah komentar user\n";
         echo "  php console.php setname [oldName] [newName] - Ganti nama/username item\n";
         echo "  php console.php findid [name] [path]        - Cari .id dari nama item\n";
-        echo "  php console.php suspend [user]              - Isolir pelanggan PPPoE\n";
-        echo "  php console.php unsuspend [user]            - Buka isolir pelanggan PPPoE\n";
         echo "  php console.php create [path] [key=val ...] - Generic add record baru\n";
         echo "  php console.php read [path] [where=val ...] - Generic read/print record\n";
         echo "  php console.php terminal \"[command]\"        - Eksekusi Terminal CLI raw\n";

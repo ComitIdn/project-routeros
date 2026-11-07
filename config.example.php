@@ -39,11 +39,23 @@ return [
         ],
     ],
 
-    // Bot Gateway Settings (Telegram & WhatsApp)
+    // Bot Gateway Settings (Telegram & WhatsApp Multi-ChatId & Multi-Recipient)
     'bots' => [
-        'telegram_token' => '',
-        'whatsapp_api'   => '',
-        'admin_chat_id'  => '',
+        'telegram_token'    => '',
+        'admin_chat_id'     => '', // Chat ID utama (opsional)
+        'telegram_chat_ids' => [
+            // Daftarkan multiple chat ID (admin, grup NOC, channel monitoring)
+            'admin'   => '',
+            'noc'     => '',
+            'finance' => '',
+        ],
+        'whatsapp_api'        => '', // Endpoint URL WhatsApp Gateway (Fonnte/Wablas/Wapik)
+        'whatsapp_token'      => '', // Token auth gateway
+        'whatsapp_recipients' => [
+            // Daftarkan nomor WhatsApp admin atau ID Grup WhatsApp
+            'admin' => '',
+            'noc'   => '',
+        ],
     ],
 
     // REST API Backend Security & Performance Settings

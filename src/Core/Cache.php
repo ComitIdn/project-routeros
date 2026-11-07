@@ -8,15 +8,37 @@ namespace RouterOSFramework\Core;
  */
 class Cache
 {
+    private string $baseDir;
     private string $cacheDir;
+    private ?string $routerId = null;
     private array $memoryCache = [];
 
-    public function __construct(?string $cacheDir = null)
+    public function __construct(?string $cacheDir = null, ?string $routerId = null)
     {
-        $this->cacheDir = $cacheDir ?? (__DIR__ . '/../../database/cache');
+        $this->baseDir = $cacheDir ?? (__DIR__ . '/../../database/cache');
+        $this->routerId = $routerId ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $routerId) : null;
+        $this->cacheDir = $this->routerId ? "{$this->baseDir}/{$this->routerId}" : $this->baseDir;
+
         if (!is_dir($this->cacheDir)) {
             mkdir($this->cacheDir, 0755, true);
         }
+    }
+
+    /**
+     * Create or return a cloned Cache instance scoped to a specific RouterOS device.
+     * Prevents cache collisions when managing multiple routers simultaneously.
+     *
+     * @param string $routerId
+     * @return self
+     */
+    public function forRouter(string $routerId): self
+    {
+        return new self($this->baseDir, $routerId);
+    }
+
+    public function getRouterId(): ?string
+    {
+        return $this->routerId;
     }
 
     private function getFilePath(string $key): string
@@ -113,7 +135,7 @@ class Cache
     }
 
     /**
-     * Clear all cached items.
+     * Clear cached items for this scoped cache directory.
      *
      * @return bool
      */
@@ -124,6 +146,47 @@ class Cache
         if ($files) {
             foreach ($files as $f) {
                 @unlink($f);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Clear cache for a specific router by its ID.
+     *
+     * @param string $routerId
+     * @return bool
+     */
+    public function clearRouter(string $routerId): bool
+    {
+        $cleanId = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $routerId);
+        $targetDir = "{$this->baseDir}/{$cleanId}";
+        if (is_dir($targetDir)) {
+            $files = glob($targetDir . '/*.cache');
+            if ($files) {
+                foreach ($files as $f) {
+                    @unlink($f);
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Clear all caches across all routers.
+     *
+     * @return bool
+     */
+    public function clearAll(): bool
+    {
+        $this->memoryCache = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->baseDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($iterator as $item) {
+            if ($item->isFile() && $item->getExtension() === 'cache') {
+                @unlink($item->getPathname());
             }
         }
         return true;

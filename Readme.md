@@ -1,7 +1,7 @@
 <div align="center" id="top">
   <h1>⚡ Project RouterOS PHP Framework (Full Version)</h1>
   <p><b>Lightweight, Multi-Protocol &amp; Enterprise-Ready PHP API Framework for MikroTik RouterOS</b><br>
-  Inspired by <a href="https://github.com/comitIdn/RouterOS-API">comitIdn/RouterOS-API</a> &bull; Full Support for <b>Multi-Protocol Transports (API, REST, SSH, Telnet)</b>, <b>Multi-PTMP Wireless</b>, <b>Full CRUD Actions</b>, <b>SQL Database</b>, <b>JSON Storage</b>, <b>Web Apps</b>, <b>Python SDK</b>, <b>JavaScript SDK</b>, <b>Chat Bots</b>, and <b>Terminal CLI</b></p>
+  Inspired by <a href="https://github.com/comitIdn/RouterOS-API">comitIdn/RouterOS-API</a> &bull; Full Support for <b>Multi-Protocol Transports (API, REST, SSH, Telnet)</b>, <b>Multi-PTMP Routeros Connection</b>, <b>Full CRUD Actions</b>, <b>SQL Database</b>, <b>JSON Storage</b>, <b>Web Apps</b>, <b>Python SDK</b>, <b>JavaScript SDK</b>, <b>Chat Bots</b>, and <b>Terminal CLI</b></p>
 </div>
 
 <p align="center">
@@ -20,9 +20,12 @@
   <a href="#-struktur-arsitektur">Arsitektur</a> &nbsp;|&nbsp;
   <a href="#-multi-protocol-transports-api-rest-ssh-telnet">Transports</a> &nbsp;|&nbsp;
   <a href="#-full-operational-crud-actions-terpisah">CRUD Actions</a> &nbsp;|&nbsp;
-  <a href="#-multi-ptmp-point-to-multipoint-wireless-management">PTMP Wireless</a> &nbsp;|&nbsp;
+  <a href="#-multi-ptmp-point-to-multipoint-wireless-management">PTMP Connection</a> &nbsp;|&nbsp;
+  <a href="#-per-router-isolated-session--cache-arsitektur-bersih">Per-Router Session & Cache</a> &nbsp;|&nbsp;
+  <a href="#-multi-logging-per-id-routeros-database--file-log">Multi-Logging</a> &nbsp;|&nbsp;
+  <a href="#-multi-chatid-bot-telegram--whatsapp-alert">Multi ChatId Bot</a> &nbsp;|&nbsp;
+  <a href="#-mikhmon-official-hotspot--pppoe-profiles-dan-auto-scheduler">Mikhmon Official Profiles</a> &nbsp;|&nbsp;
   <a href="#-mass-scale-voucher-engine-hingga-10000-sekaligus">Voucher Massal</a> &nbsp;|&nbsp;
-  <a href="#-profil-hotspot-on-login-script-otomatis-auto-expiry--anti-tethering">Hotspot Profile</a> &nbsp;|&nbsp;
   <a href="#-enterprise-server--firewall-security-baseline">Server & Firewall</a> &nbsp;|&nbsp;
   <a href="#-unified-mysql--mariadb--sqlite-architecture">MySQL Enterprise</a> &nbsp;|&nbsp;
   <a href="#-dukungan-multi-platform--bahasa-php-python-js-cli-json">Multi-Bahasa</a> &nbsp;|&nbsp;
@@ -43,34 +46,41 @@
 2. **Full Operational Actions Terpisah (Superpower CRUD)**:
    - File terpisah, bersih tanpa penamaan ganda: **`Creator`**, **`Writer`**, **`Reader`**, **`Finder`**, **`Setter`**, **`Getter`**, **`Printer`**, **`Remover`**, **`Toggler`**.
    - Tambah record baru, jalankan script/terminal raw, paginasi data, cari `.id` dari nama, ubah limit/komentar/email/nama, toggle aktif/nonaktif dalam 1 baris.
-3. **Multi-PTMP Wireless Management (Untuk Tower & Base Station WISP / RT-RW Net)**:
+3. **Multi-PTMP Routeros Connection Management (Untuk Tower & Base Station WISP / RT-RW Net)**:
    - Mendukung segala jenis perangkat MikroTik: **802.11a/b/g/n/ac**, **MikroTik NV2 TDMA**, **Nstreme / Dual Nstreme**, **60GHz (w60g)**, dan **WiFiWave2 / WiFi 6**.
    - Pantau seluruh CPE Station yang terhubung: Signal dBm (TX/RX), CCQ %, SNR, Throughput TX/RX, Jarak (km), Versi RouterOS, dan Status Kesehatan Link (*Health Index*).
    - Manajemen Access-List (Whitelist/Blacklist MAC dengan batas toleransi sinyal), Connect-List, Kick Station, Ganti Frekuensi, Channel Width, dan Pengaturan NV2.
-4. **Dukungan Multi-Bahasa & Lingkungan Pemrograman**:
+4. **Per-Router Isolated Session & Cache (Bebas Tabrakan Data Multi-Router)**:
+   - Sesi runtime dan token terisolasi aman per router ID di `database/sessions/router_{id}.json` dengan file locking atomik.
+   - Cache partisi direktori terisolasi `database/cache/{routerId}/` dengan TTL cerdas (`$ros->cache()->forRouter($id)`).
+5. **Multi Logging Per ID RouterOS (SQL Database & File Log Terpartisi)**:
+   - Pencatatan aktivitas ganda: tersimpan rapih di database SQL (`activity_logs` dengan kolom `router_id`) dan file log fisik terpisah (`database/logs/router_{id}.log`).
+   - Riwayat log dapat diekstraksi per router ID langsung via `$ros->getLogs($limit)` atau API REST.
+6. **Multi ChatId Bot Telegram & WhatsApp Notifications**:
+   - Mendukung pengiriman notifikasi broadcast alert ke banyak ID grup NOC, tim teknisi, dan pimpinan secara bersamaan.
+   - Pengaturan mudah lewat file `config.php` (`telegram_chat_ids` & `whatsapp_recipients`) atau dinamis saat runtime (`addTelegramChatId`, `addWhatsAppRecipient`).
+7. **Mikhmon Official Hotspot & PPPoE Profiles, Schedulers & Auto-Isolir**:
+   - **Hotspot On-Login Script**: Format resmi Mikhmon (`exp: date time`), kunci MAC address otomatis (*anti-tethering*), dan scheduler cleaner penghapus sesi hantu.
+   - **PPPoE Isolir Profile & Scheduler**: Profile `ISOLIR`, auto-isolir scheduler memeriksa tag jatuh tempo `due:YYYY-MM-DD`, firewall NAT redirect ke landing page isolir, dan metode reaktivasi instan pelanggan pasca bayar (`reconnectCustomer()`).
+8. **Dukungan Multi-Bahasa & Lingkungan Pemrograman**:
    - **PHP**: Native / Manual, Laravel Facade & ServiceProvider, CodeIgniter 3 & 4.
    - **Python SDK (`routeros.py`)**: Standalone library Python 3 tanpa dependensi (zero-dependency).
    - **JavaScript SDK (`assets/js/routeros.js`)**: Universal UMD SDK untuk Browser, Vue, React, Svelte, dan Node.js.
    - **RESTful JSON API (`api.php`)**: Endpoint siap pakai dengan CORS untuk aplikasi Mobile & Web.
    - **Terminal CLI Console (`console.php`)**: Manajemen interaktif langsung dari terminal Linux/Termux.
-5. **Dua Jenis Penyimpanan Database (SQL PDO & JSON Flat-File)**:
+9. **Dua Jenis Penyimpanan Database (SQL PDO & JSON Flat-File)**:
    - **SQLite** tanpa instalasi server database (*zero-config*) dan dukungan **MySQL / MariaDB / PostgreSQL**.
    - **JSON Flat-File Storage**: Simpan konfigurasi, voucher, dan log langsung sebagai file JSON.
-6. **Mass-Scale Voucher Engine (Hingga 10.000+ Voucher Sekaligus)**:
+10. **Mass-Scale Voucher Engine (Hingga 10.000+ Voucher Sekaligus)**:
    - Generate ribuan voucher dalam hitungan milidetik menggunakan engine *collision-free hash set*.
    - Multi-row chunked batch inserts ke MySQL / SQLite dalam 1 transaksi ACID, serta atomic push ke JSON storage.
    - Sinkronisasi single-roundtrip ke RouterOS via compact CLI script atau ekspor file `.rsc` siap impor.
-7. **Profil Hotspot On-Login Script Otomatis (Auto-Expiry & Anti-Tethering)**:
-   - Kompatibel penuh RouterOS v6.xx dan v7.xx+.
-   - Otomatis mencatat waktu jatuh tempo sejak login pertama dan memutus sesi saat durasi habis.
-   - Kunci MAC address perangkat otomatis saat login pertama kali (mencegah akun dishare).
-   - Opsional notifikasi instan login ke bot Telegram dan pasang background cleaner untuk sesi aktif yatim piatu (*ghost sessions*).
-8. **Enterprise Server Interfaces & Firewall Hardening**:
+11. **Enterprise Server Interfaces & Firewall Hardening**:
    - Khusus server data center & ISP (CCR, CRS, CHR, x86): Port Fiber SFP/SFP+ 10G/40G, LACP Bonding (802.3ad), VRRP Dual-Router HA Failover, 802.1Q VLANs, VXLAN, EoIP, GRE, WireGuard.
    - **FastTrack Acceleration**: Memangkas utilisasi CPU server hingga 80% pada throughput Gigabit/10G.
    - **Brute-Force Guard**: Karantina otomatis 3-tahap untuk port SSH (22), WinBox (8291), dan API (8728/8729).
    - **Port Scan Detection (PSD)**: Blokir otomatis pemindai jaringan (Nmap/Masscan).
-9. **REST API Backend Hardening**:
+12. **REST API Backend Hardening**:
    - Proteksi otentikasi opsional via Bearer Token atau header `X-API-KEY`.
    - Kompresi transfer **HTTP Gzip** otomatis (mengurangi ukuran payload JSON hingga 85-90%).
    - **Batch Multi-Operation Endpoint**: Eksekusi banyak operasi sekaligus dalam 1 request HTTP roundtrip.
@@ -100,18 +110,21 @@ project-routeros/
 │   ├── 04_pppoe.php            # PPPoE secrets, static IP, billing overdue & auto-isolate
 │   ├── 05_actions.php          # Dedicated Actions: Finder, Setter, Getter, Printer, Remover
 │   ├── 06_multi_platform.php   # Panduan integrasi Laravel, CodeIgniter, JS SDK, CLI
-│   ├── 07_ptmp_and_protocols.php # Multi-Protocol Transports & Multi-PTMP Wireless
+│   ├── 07_ptmp_and_protocols.php # Multi-Protocol Transports & Multi-PTMP Routeros Connection
 │   ├── 08_javascript_master.js # Master JavaScript Multi-Router Concurrent Pool & Debugger
 │   ├── 09_enterprise_server_and_security.php # SFP Fiber, LACP Bonding, VRRP, & FastTrack Firewall
-│   └── 10_mysql_enterprise_architecture.php  # High-Throughput MySQL Batch Inserts & ACID Transactions
+│   ├── 10_mysql_enterprise_architecture.php  # High-Throughput MySQL Batch Inserts & ACID Transactions
+│   └── 11_mikhmon_profiles_and_multi_router.php # Mikhmon Official Profiles, Schedulers, Multi-Logging & Multi-Bot
 ├── assets/
 │   └── js/
 │       └── routeros.js         # Client-side JavaScript SDK Universal (Vanilla, Vue, React, Node)
 ├── database/
-│   ├── schema.sql              # Skema SQL (routers, vouchers, users, logs)
+│   ├── schema.sql              # Skema SQL (routers, vouchers, users, activity_logs)
 │   ├── routeros.sqlite         # Database SQLite lokal (dibuat otomatis)
 │   ├── json/                   # Direktori penyimpanan database flat JSON
-│   └── cache/                  # Direktori cache response MikroTik (TTL)
+│   ├── cache/                  # Direktori cache response MikroTik (TTL per-router)
+│   ├── sessions/               # Penyimpanan sesi terisolasi per-router (router_{id}.json)
+│   └── logs/                   # Log aktivitas fisik terpartisi per router (router_{id}.log)
 ├── src/
 │   ├── Transports/             # Multi-Protocol Transport Drivers
 │   │   ├── TransportInterface.php # Kontrak Transport Universal
@@ -140,14 +153,15 @@ project-routeros/
 │   │   ├── RouterOSAPI.php     # Client gaya comitIdn/RouterOS-API (connect, comm, write)
 │   │   ├── RouterOS.php        # Unified Framework Facade & Module Accessor
 │   │   ├── Connection.php      # Transport Manager dengan error recovery & dynamic switching
-│   │   ├── Database.php        # Lightweight SQL PDO Engine (SQLite & MySQL)
+│   │   ├── RouterSession.php   # Sesi & Token Terisolasi Per-Router dengan Atomic File Locking
+│   │   ├── Database.php        # Lightweight SQL PDO Engine (SQLite, MySQL, Multi-Logging)
 │   │   ├── JsonStorage.php     # Engine Database File JSON Flat-Store
-│   │   ├── Cache.php           # High-Performance TTL Caching Layer
+│   │   ├── Cache.php           # High-Performance TTL Caching Layer (Partisi Per-Router)
 │   │   ├── MultiRouter.php     # Enterprise Multi-Router Manager
 │   │   ├── Response.php        # Standardized JSON Response Formatter
 │   │   └── Helper.php          # Utilitas format bytes, validasi IP/MAC, PIN acak
 │   └── Modules/
-│       ├── Ptmp.php            # Multi-PTMP Wireless: NV2, Nstreme, 60GHz, Sinyal, CCQ, Access-List
+│       ├── Ptmp.php            # Multi-PTMP Routeros Connection: NV2, Nstreme, 60GHz, Sinyal, CCQ, Access-List
 │       ├── Hotspot.php         # Manajemen Hotspot lengkap (User, Active, Host, Bypass)
 │       ├── Voucher.php         # Generator Voucher, Simpan SQL/JSON, Cetak Kupon
 │       ├── PPPoE.php           # Manajemen PPPoE (Secret, Profile, Active, Server, Isolir)
@@ -351,6 +365,145 @@ $ros->hotspot()->createVoucherProfile('1HARI-5MB', '2M/5M', '1d', [
 
 // 2. Pasang Background Cleaner di RouterOS untuk menghapus sesi mati / ghost sessions
 $ros->hotspot()->installExpiryCleanupScheduler(5); // Jalan otomatis tiap 5 menit
+```
+
+---
+
+## ⚡ Per-Router Isolated Session & Cache (Arsitektur Bersih)
+
+Saat mengelola puluhan router MikroTik secara bersamaan, tabrakan data (*session collision*) sering terjadi jika session dan cache tidak terisolasi. Framework ini menyediakan sistem partisi runtime terisolasi per-router ID:
+
+### 1. Sesi Terisolasi Per-Router ([`RouterSession`](file:///data/data/com.termux/files/home/project-routeros/src/Core/RouterSession.php))
+Tiap router memiliki file session mandiri di `database/sessions/router_{id}.json` lengkap dengan token autentikasi, status keaktifan, dan kunci atomic file lock:
+
+```php
+// Inisialisasi router spesifik
+$ros->setRouterId('tower-utara');
+$session = $ros->session();
+
+// Simpan runtime state router
+$session->set('admin_user', 'superadmin');
+$session->set('selected_frequency', '5180');
+
+// Baca atribut session
+$user = $session->get('admin_user');
+$token = $session->getToken();
+$isValid = $session->isValid(3600); // Cek apakah sesi aktif dalam 1 jam
+```
+
+### 2. Cache Terpartisi Per-Router ([`Cache`](file:///data/data/com.termux/files/home/project-routeros/src/Core/Cache.php))
+Data cache disimpan dalam folder terpisah `database/cache/{routerId}/` sehingga data query router A tidak akan pernah tertukar dengan router B:
+
+```php
+$cache = $ros->cache(); // Otomatis terikat ke router ID saat ini
+
+// Simpan cache dengan durasi TTL (detik)
+$cache->set('active_stations', $stations, 120);
+
+// Atau akses cache router lain secara dinamis
+$southCache = $cache->forRouter('tower-selatan')->get('active_stations');
+
+// Bersihkan cache router spesifik saja tanpa menghapus cache router lainnya
+$cache->clearRouter('tower-utara');
+```
+
+---
+
+## 📝 Multi-Logging Per ID RouterOS (Database & File Log)
+
+Pencatatan aktivitas sistem terintegrasi ganda:
+1. **SQL Database (`activity_logs`)**: Terindeks dengan kolom `router_id` untuk pencarian dan audit instan.
+2. **File Log Fisik Terpisah (`database/logs/router_{id}.log`)**: Log berputar (*file append*) yang aman diekspor untuk analisa NOC.
+
+```php
+// Catat aktivitas router
+$ros->log('BILLING', 'Auto-Isolir', 'client_andi', 'Customer diisolir karena jatuh tempo', 'warning');
+$ros->log('SECURITY', 'Firewall Drop', '192.168.88.200', 'Brute force port 8291 terdeteksi', 'danger');
+
+// Ambil riwayat log per router ID (Max 20 data terakhir)
+$logs = $ros->getLogs(20);
+foreach ($logs as $l) {
+    echo "[{$l['timestamp']}] ({$l['category']}) {$l['action']} -> {$l['details']}\n";
+}
+```
+
+---
+
+## 🤖 Multi ChatId Bot Telegram & WhatsApp Alert
+
+Notifikasi alert jaringan kini dapat didistribusikan ke banyak penerima sekaligus (misal: grup NOC, teknisi lapangan, dan pimpinan ISP):
+
+```php
+$bot = $ros->bot();
+
+// Tambah ID chat Telegram (grup atau personal)
+$bot->addTelegramChatId('-1001234567890'); // Grup NOC Telegram
+$bot->addTelegramChatId('987654321');      // Superadmin Personal
+
+// Tambah Nomor WhatsApp (individu atau ID grup)
+$bot->addWhatsAppRecipient('628123456789');  // Admin WhatsApp
+$bot->addWhatsAppRecipient('628987654321');  // Teknisi On-Duty
+
+// Broadcast pesan alert ke seluruh channel sekaligus
+$res = $bot->broadcast("🚨 [ALERT] Router " . $ros->getRouterId() . ": Interface sfp-sfpplus1 LINK DOWN!");
+echo "Terkirim ke {$res['telegram']['sent']} grup Telegram & {$res['whatsapp']['sent']} nomor WhatsApp\n";
+```
+
+Konfigurasi statis juga dapat langsung disetel di [`config.php`](file:///data/data/com.termux/files/home/project-routeros/config.php):
+```php
+'bot' => [
+    'telegram_chat_ids'   => ['-1001234567890', '987654321'],
+    'whatsapp_recipients' => ['628123456789', '628987654321'],
+],
+```
+
+---
+
+## 👑 Mikhmon Official Hotspot & PPPoE Profiles dan Auto-Scheduler
+
+Dukungan 100% kompatibel dengan alur kerja **Mikhmon Online Official** untuk manajemen billing ISP RT/RW Net:
+
+### 1. Mikhmon Hotspot User Profile & On-Login Script
+Menciptakan profil voucher dengan script `on-login` cerdas yang mencatat jam login pertama (`exp: date time`), mengunci MAC address perangkat (*anti-tethering*), dan scheduler penghapus sesi yatim piatu:
+
+```php
+$ros->hotspot()->setupMikhmonProfile(
+    '1JAM-2MB',  // Nama profil
+    '1M/2M',     // Limit bandwidth
+    '1h',        // Validitas masa aktif voucher
+    3000,        // Harga voucher (Rp 3.000)
+    'remove',    // Mode kedaluwarsa: 'remove', 'notice', atau 'remove_record'
+    [
+        'shared_users' => '1',
+        'lock_mac'     => true,
+    ]
+);
+```
+
+### 2. Mikhmon PPPoE Isolir Profile, NAT Redirect & Auto-Isolir Scheduler
+Menyiapkan profil isolir lengkap dengan IP pool, limit isolir, address-list `ISOLIR_LIST`, redirect otomatis ke web landing page isolir, dan scheduler RouterOS yang memutus pelanggan otomatis saat jatuh tempo:
+
+```php
+// Setup profil isolir & pasang auto-isolir scheduler otomatis di RouterOS
+$ros->pppoe()->setupMikhmonIsolirProfile('ISOLIR', [
+    'local_address'      => '10.0.99.1',
+    'remote_address'     => '10.0.99.2-10.0.99.254',
+    'rate_limit'         => '128k/128k',
+    'address_list'       => 'ISOLIR_LIST',
+    'nat_redirect'       => true,  // Redirect port 80 ke server halaman tagihan
+    'install_scheduler'  => true,  // Pasang scheduler pengecek due date tiap jam
+    'scheduler_interval' => '1h',
+]);
+
+// Set tanggal jatuh tempo pada secret pelanggan (Format Mikhmon: due:YYYY-MM-DD)
+$ros->pppoe()->setPppoeDueDate('client_budi', '2026-11-20', 'INV-2026-001');
+
+// Isolir pelanggan manual dengan pencatatan alasan
+$ros->pppoe()->isolateCustomer('client_budi', 'ISOLIR', 'Menunggak 1 Bulan');
+
+// Reaktivasi Instan Pasca Pembayaran:
+// Mengembalikan profil normal, memperbarui due date bulan depan, dan memutus sesi isolir
+$ros->pppoe()->reconnectCustomer('client_budi', '10MBPS', '2026-12-20', 'Lunas Tagihan');
 ```
 
 ---
@@ -589,6 +742,14 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | `POST` | `/api.php?action=set_name` | Ganti nama / rename item |
 | `POST` | `/api.php?action=pppoe_suspend` | Isolir pelanggan PPPoE |
 | `POST` | `/api.php?action=pppoe_unsuspend` | Buka isolir pelanggan PPPoE |
+| `POST` | `/api.php?action=pppoe_setup_mikhmon` | Setup profil ISOLIR, NAT redirect, & scheduler auto-isolir |
+| `POST` | `/api.php?action=pppoe_reconnect` | Reaktivasi pelanggan pasca bayar (perbarui due date & kick isolir) |
+| `POST` | `/api.php?action=pppoe_isolate` | Isolir pelanggan langsung dengan catatan alasan |
+| `POST` | `/api.php?action=pppoe_auto_isolate` | Eksekusi pengecekan jatuh tempo dan isolir otomatis |
+| `POST` | `/api.php?action=hotspot_setup_mikhmon` | Setup profil Hotspot Mikhmon dengan on-login auto-cleaner |
+| `GET`/`POST` | `/api.php?action=router_session` | Baca, set, atau bersihkan sesi runtime terisolasi per-router |
+| `GET` | `/api.php?action=router_logs` | Ambil riwayat multi-logging per router ID |
+| `POST` | `/api.php?action=bot_broadcast` | Broadcast pesan alert ke multi ChatId Telegram & WhatsApp |
 | `POST` | `/api.php?action=create` | Tambah record dinamis pada path apapun |
 | `POST` | `/api.php?action=read` | Baca/query fleksibel pada path apapun |
 | `POST` | `/api.php?action=generic_set` | Modifikasi properti dinamis pada path apapun |
@@ -611,9 +772,11 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | **`remove()`** | `remove()`, `byName()`, `byId()`, `where()`, `batch()`, `byComment()`, `byProfile()`, `all()` |
 | **`toggle()`** | `enable()`, `disable()`, `toggle()`, `enableBatch()`, `disableBatch()`, `resetCounter()` |
 | **`ptmp()`** | `detectHardware()`, `getStations()`, `getStationQualityMetrics()`, `getAccessList()`, `addAccessList()`, `removeAccessList()`, `getConnectList()`, `addConnectList()`, `kickStation()`, `setProtocol()`, `setNv2Config()`, `setChannel()`, `setTxPower()`, `scanFrequencies()` |
-| **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `createVoucherProfile()`, `generateOnLoginScript()`, `installExpiryCleanupScheduler()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
+| **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `createVoucherProfile()`, `generateOnLoginScript()`, `setupMikhmonProfile()`, `installExpiryCleanupScheduler()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
 | **`voucher()`** | `generate()`, `generateFastBulk()`, `generateRscScript()`, `generateAndSave()`, `generateQrCodeUrl()`, `getFromDb()`, `markUsed()`, `deleteBatch()`, `renderPrintCards()`, `renderThermalReceipt()`, `getSalesReport()`, `getBatchSummary()`, `exportToCsv()`, `importFromCsv()` |
-| **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `ensureIsolateProfile()`, `syncToDatabase()` |
+| **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `isolateCustomer()`, `reconnectCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `ensureIsolateProfile()`, `setupMikhmonIsolirProfile()`, `installPppoeIsolirScheduler()`, `syncToDatabase()` |
+| **`session()`** | `getSessionId()`, `getToken()`, `setToken()`, `get()`, `set()`, `has()`, `remove()`, `all()`, `touch()`, `isValid()`, `clear()`, `destroy()` |
+| **`bot()`** | `broadcast()`, `sendTelegram()`, `sendWhatsApp()`, `addTelegramChatId()`, `addWhatsAppRecipient()`, `notifyRouterAlert()` |
 | **`firewall()`** | `getFilterRules()`, `addFilterRule()`, `getNatRules()`, `addMasquerade()`, `addAddressList()`, `enableFastTrack()`, `dropInvalid()`, `protectBruteForce()`, `protectPortScanners()`, `hardenServerBaseline()` |
 | **`queue()`** | `getAll()`, `add()`, `limitBandwidth()`, `remove()` |
 | **`interface()`** | `getAll()`, `getEthernet()`, `getSfp()`, `getBridges()`, `getVlans()`, `getBonding()`, `getVrrp()`, `getWireGuard()`, `getEoip()`, `getGre()`, `getVxlan()`, `monitorTraffic()`, `enable()`, `disable()`, `setComment()` |

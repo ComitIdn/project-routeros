@@ -322,6 +322,122 @@ class PPPoE
         ];
     }
 
+    /**
+     * Reconnect and reactivate an isolated customer upon payment (Mikhmon & ISP Billing standard).
+     * Restores subscribed profile, updates due date in comment, kicks active session, and logs event.
+     *
+     * @param string $username PPPoE username
+     * @param string $targetProfile Target package profile (e.g. '10MBPS')
+     * @param string|null $nextDueDate New expiration/due date (YYYY-MM-DD)
+     * @param string|null $comment Additional billing note / invoice number
+     * @return array
+     */
+    public function reconnectCustomer(
+        string $username,
+        string $targetProfile = 'default',
+        ?string $nextDueDate = null,
+        ?string $comment = null
+    ): array {
+        $id = $this->findNameToId($username) ?? $username;
+        $userDetails = $this->getUserDetails($username);
+        $oldComment = $userDetails['comment'] ?? '';
+
+        // Clean previous ISOLATED tag and construct new comment
+        $cleanComment = preg_replace('/\[ISOLATED[^\]]*\]\s*/i', '', $oldComment);
+        if ($nextDueDate) {
+            if (preg_match('/due:[^\s\|]+/i', $cleanComment)) {
+                $cleanComment = preg_replace('/due:[^\s\|]+/i', "due:{$nextDueDate}", $cleanComment);
+            } else {
+                $cleanComment = trim($cleanComment . " due:{$nextDueDate}");
+            }
+        }
+        if ($comment) {
+            $cleanComment = trim($cleanComment . " | {$comment}");
+        }
+        $cleanComment = trim($cleanComment);
+
+        $params = ['profile' => $targetProfile];
+        if (!empty($cleanComment)) {
+            $params['comment'] = $cleanComment;
+        }
+
+        $res = $this->conn->set('/ppp/secret/set', $id, $params);
+        if (isset($res['error'])) {
+            return ['success' => false, 'error' => $res['error']];
+        }
+
+        // Kick active session so customer reconnects immediately with high-speed profile
+        $disconnect = $this->disconnectUser($username);
+
+        if ($this->db) {
+            $dbParams = [
+                'profile'  => $targetProfile,
+                'status'   => 'active',
+                'comment'  => $cleanComment ?: null,
+            ];
+            if ($nextDueDate) {
+                $dbParams['due_date'] = $nextDueDate;
+            }
+            $this->db->update('pppoe_users', $dbParams, 'username = :u', ['u' => $username]);
+            $this->db->log('PPPoE', 'Reconnect Customer', $username, "Reactivated to profile {$targetProfile}" . ($nextDueDate ? " (Next Due: {$nextDueDate})" : ""), 'success');
+        }
+
+        return [
+            'success'              => true,
+            'username'             => $username,
+            'status'               => 'active',
+            'profile'              => $targetProfile,
+            'due_date'             => $nextDueDate,
+            'comment'              => $cleanComment,
+            'session_disconnected' => $disconnect['disconnected'] ?? 0,
+        ];
+    }
+
+    /**
+     * Isolate a customer immediately (switch profile to ISOLIR and terminate active session).
+     *
+     * @param string $username PPPoE username
+     * @param string $isolateProfile Isolation profile name (default 'ISOLIR')
+     * @param string $reason Reason for isolation
+     * @return array
+     */
+    public function isolateCustomer(string $username, string $isolateProfile = 'ISOLIR', string $reason = 'Jatuh Tempo'): array
+    {
+        $id = $this->findNameToId($username) ?? $username;
+        $userDetails = $this->getUserDetails($username);
+        $oldComment = $userDetails['comment'] ?? '';
+
+        $newComment = trim($oldComment . " [ISOLATED: {$reason}]");
+        $res = $this->conn->set('/ppp/secret/set', $id, [
+            'profile' => $isolateProfile,
+            'comment' => $newComment,
+        ]);
+
+        if (isset($res['error'])) {
+            return ['success' => false, 'error' => $res['error']];
+        }
+
+        $disconnect = $this->disconnectUser($username);
+
+        if ($this->db) {
+            $this->db->update('pppoe_users', [
+                'profile' => $isolateProfile,
+                'status'  => 'suspended',
+                'comment' => $newComment,
+            ], 'username = :u', ['u' => $username]);
+            $this->db->log('PPPoE', 'Isolate Customer', $username, "Isolated: {$reason}", 'warning');
+        }
+
+        return [
+            'success'              => true,
+            'username'             => $username,
+            'status'               => 'suspended',
+            'isolate_profile'      => $isolateProfile,
+            'reason'               => $reason,
+            'session_disconnected' => $disconnect['disconnected'] ?? 0,
+        ];
+    }
+
     public function setPppoeDueDate(string $username, string $dueDate, ?string $invoiceId = null): array
     {
         $id = $this->findNameToId($username) ?? $username;
@@ -557,6 +673,141 @@ class PPPoE
 
         $res = $this->addProfile($name, $localAddress, $remoteAddress, $rateLimit);
         return ['status' => 'created', 'profile' => $name, 'result' => $res];
+    }
+
+    /**
+     * Generate RouterOS auto-isolation script for PPPoE secrets (Mikhmon Official Compatible).
+     * Compares secret due date tag 'due:YYYY-MM-DD' with system clock and isolates overdue customers.
+     *
+     * @param string $isolateProfile
+     * @return string
+     */
+    public function generatePppoeIsolirScript(string $isolateProfile = 'ISOLIR'): string
+    {
+        $script = [];
+        $script[] = '# Project RouterOS Mikhmon-Style PPPoE Auto-Isolir Script';
+        $script[] = ':local cDate [/system clock get date];';
+        $script[] = ':foreach i in=[/ppp secret find where profile!="' . $isolateProfile . '"] do={';
+        $script[] = '    :local uName [/ppp secret get $i name];';
+        $script[] = '    :local uComm [/ppp secret get $i comment];';
+        $script[] = '    :if ([:find $uComm "due:"] != nil) do={';
+        $script[] = '        :local pos ([:find $uComm "due:"] + 4);';
+        $script[] = '        :local dueDate [:pick $uComm $pos ($pos + 10)];';
+        $script[] = '        :if ($dueDate != "" && $dueDate < $cDate) do={';
+        $script[] = '            :log warning ("PPPoE Isolir: Customer " . $uName . " overdue (" . $dueDate . "), switching to ' . $isolateProfile . '");';
+        $script[] = '            /ppp secret set $i profile="' . $isolateProfile . '" comment=($uComm . " [ISOLATED]");';
+        $script[] = '            /ppp active remove [find name=$uName];';
+        $script[] = '        }';
+        $script[] = '    }';
+        $script[] = '}';
+        return implode("\n", $script);
+    }
+
+    /**
+     * Install background scheduler in RouterOS for automated PPPoE customer isolation on due date.
+     *
+     * @param string $isolateProfile Isolation profile name
+     * @param string $interval Check interval (default '1h', or '01:00:00')
+     * @return array
+     */
+    public function installPppoeIsolirScheduler(string $isolateProfile = 'ISOLIR', string $interval = '1h'): array
+    {
+        $schedName = 'mikhmon-pppoe-isolir';
+        $existing = $this->conn->read('/system/scheduler/print', ['name' => $schedName]);
+        $scriptCode = $this->generatePppoeIsolirScript($isolateProfile);
+
+        $params = [
+            'name'      => $schedName,
+            'interval'  => $interval,
+            'on-event'  => $scriptCode,
+            'comment'   => 'Project RouterOS Mikhmon PPPoE Auto-Isolir Scheduler',
+        ];
+
+        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
+            $id = $existing[0]['.id'] ?? $schedName;
+            return $this->conn->set('/system/scheduler/set', $id, $params);
+        }
+
+        return $this->conn->write('/system/scheduler/add', $params);
+    }
+
+    /**
+     * Setup Mikhmon-style official PPPoE Isolir Profile with address-list, rate-limit,
+     * optional NAT redirection rule, and automated background scheduler.
+     *
+     * @param string $name Profile name (default 'ISOLIR')
+     * @param array $options [
+     *   'local_address'      => '10.0.99.1',
+     *   'remote_address'     => '10.0.99.2-10.0.99.254',
+     *   'rate_limit'         => '128k/128k',
+     *   'address_list'       => 'ISOLIR_LIST',
+     *   'dns_server'         => '10.0.99.1',
+     *   'nat_redirect'       => true,
+     *   'install_scheduler'  => true,
+     *   'scheduler_interval' => '1h',
+     * ]
+     * @return array
+     */
+    public function setupMikhmonIsolirProfile(string $name = 'ISOLIR', array $options = []): array
+    {
+        $localAddress = $options['local_address'] ?? '10.0.99.1';
+        $remoteAddress = $options['remote_address'] ?? '10.0.99.2-10.0.99.254';
+        $rateLimit = $options['rate_limit'] ?? '128k/128k';
+        $addressList = $options['address_list'] ?? 'ISOLIR_LIST';
+        $dnsServer = $options['dns_server'] ?? '10.0.99.1';
+        $natRedirect = $options['nat_redirect'] ?? true;
+        $installScheduler = $options['install_scheduler'] ?? true;
+        $schedInterval = $options['scheduler_interval'] ?? '1h';
+
+        // 1. Create or update PPP Profile
+        $profileParams = [
+            'name'           => $name,
+            'local-address'  => $localAddress,
+            'remote-address' => $remoteAddress,
+            'rate-limit'     => $rateLimit,
+            'address-list'   => $addressList,
+            'dns-server'     => $dnsServer,
+            'comment'        => 'Mikhmon PPPoE Isolation Profile',
+        ];
+
+        $existingProfile = $this->conn->read('/ppp/profile/print', ['name' => $name]);
+        if (!empty($existingProfile) && !isset($existingProfile['error'])) {
+            $id = $existingProfile[0]['.id'] ?? $name;
+            $profileRes = $this->conn->set('/ppp/profile/set', $id, $profileParams);
+        } else {
+            $profileRes = $this->conn->write('/ppp/profile/add', $profileParams);
+        }
+
+        // 2. Optional NAT redirection for isolated customers (redirect port 80 to gateway/landing page)
+        $natRes = null;
+        if ($natRedirect) {
+            $existingNat = $this->conn->read('/ip/firewall/nat/print', ['comment' => 'Mikhmon-Isolir-Redirect']);
+            if (empty($existingNat) || isset($existingNat['error'])) {
+                $natRes = $this->conn->write('/ip/firewall/nat/add', [
+                    'chain'             => 'dstnat',
+                    'action'            => 'redirect',
+                    'to-ports'          => '80',
+                    'protocol'          => 'tcp',
+                    'dst-port'          => '80',
+                    'src-address-list'  => $addressList,
+                    'comment'           => 'Mikhmon-Isolir-Redirect',
+                ]);
+            }
+        }
+
+        // 3. Automated scheduler
+        $schedRes = null;
+        if ($installScheduler) {
+            $schedRes = $this->installPppoeIsolirScheduler($name, $schedInterval);
+        }
+
+        return [
+            'status'         => 'success',
+            'profile'        => $name,
+            'profile_result' => $profileRes,
+            'nat_result'     => $natRes,
+            'sched_result'   => $schedRes,
+        ];
     }
 
     /**

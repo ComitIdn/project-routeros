@@ -13,7 +13,7 @@
  * - Self-Contained Built-in Debugger & Benchmark Timer (no external logger needed)
  * - Concurrent Multi-Router Connection Pool (parallel async querying via Promise.allSettled)
  * - Full Operational CRUD Actions (Create, Read, Write, Set, Remove, Toggle, Find)
- * - Multi-PTMP Wireless Management (NV2, Nstreme, 60GHz, Sinyal TX/RX, CCQ, Access-List)
+ * - Multi-PTMP Routeros Connection Management (NV2, Nstreme, 60GHz, Sinyal TX/RX, CCQ, Access-List)
  * - Hotspot, Voucher Generator, PPPoE ISP Billing, and Real-time Telemetry
  */
 
@@ -661,7 +661,7 @@
     }
 
     /**
-     * Multi-PTMP Wireless Sub-module
+     * Multi-PTMP Routeros Connection Sub-module
      */
     class PtmpModule {
         constructor(ros) { this.ros = ros; }

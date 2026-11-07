@@ -23,6 +23,21 @@ return [
         // 'password' => '',
     ],
 
+    // Bot Gateway Settings (Telegram & WhatsApp Multi-ChatId)
+    'bots' => [
+        'telegram_token'    => '',
+        'admin_chat_id'     => '',
+        'telegram_chat_ids' => [
+            'admin' => '',
+            'noc'   => '',
+        ],
+        'whatsapp_api'        => '',
+        'whatsapp_token'      => '',
+        'whatsapp_recipients' => [
+            'admin' => '',
+        ],
+    ],
+
     // REST API Backend Security & Performance Settings
     'api' => [
         'key'   => '',   // Optional API Bearer Key / X-API-KEY (empty = allow local requests)

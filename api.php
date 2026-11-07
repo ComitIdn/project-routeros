@@ -61,6 +61,11 @@ if (!empty($configuredApiKey)) {
 // Load framework
 $ros = RouterOS::withConfig(__DIR__ . '/config.php');
 
+// Optional runtime router ID switch for Multi-Router & Per-Router Session/Cache/Log isolation
+if (!empty($request['router_id'])) {
+    $ros->setRouterId((string)$request['router_id']);
+}
+
 // Optional runtime protocol switch: 'api', 'rest', 'ssh', 'telnet', 'auto'
 if (!empty($request['protocol'])) {
     $ros->setProtocol($request['protocol'], !empty($request['port']) ? (int)$request['port'] : null);
@@ -196,6 +201,19 @@ try {
             ];
             $res = $ros->hotspot()->createVoucherProfile($name, $rate, $validity, $profileOpts);
             Response::json($res, 201, "Hotspot profile {$name} created with automated on-login expiry");
+            break;
+
+        case 'hotspot_setup_mikhmon':
+            $name = $request['name'] ?? '';
+            if (empty($name)) {
+                Response::json(null, 400, 'Parameter name is required');
+            }
+            $rate = $request['rate_limit'] ?? '2M/5M';
+            $validity = $request['validity'] ?? '1d';
+            $price = (float)($request['price'] ?? 0);
+            $expiryMode = $request['expiry_mode'] ?? 'remove';
+            $res = $ros->hotspot()->setupMikhmonProfile($name, $rate, $validity, $price, $expiryMode, $request['options'] ?? []);
+            Response::json($res, 201, "Mikhmon official Hotspot profile {$name} successfully configured with auto-cleanup scheduler");
             break;
 
         // --- FIREWALL SECURITY HARDENING ---
@@ -345,7 +363,97 @@ try {
             Response::json($res, 200, "Bound {$user} to MAC {$mac}");
             break;
 
-        // --- MULTI-PTMP WIRELESS ENDPOINTS ---
+        case 'pppoe_setup_mikhmon':
+            $profileName = $request['profile'] ?? 'ISOLIR';
+            $options = $request['options'] ?? [
+                'local_address'      => $request['local_address'] ?? '10.0.99.1',
+                'remote_address'     => $request['remote_address'] ?? '10.0.99.2-10.0.99.254',
+                'rate_limit'         => $request['rate_limit'] ?? '128k/128k',
+                'address_list'       => $request['address_list'] ?? 'ISOLIR_LIST',
+                'nat_redirect'       => isset($request['nat_redirect']) ? (bool)$request['nat_redirect'] : true,
+                'install_scheduler'  => isset($request['install_scheduler']) ? (bool)$request['install_scheduler'] : true,
+                'scheduler_interval' => $request['scheduler_interval'] ?? '1h',
+            ];
+            $res = $ros->pppoe()->setupMikhmonIsolirProfile($profileName, $options);
+            Response::json($res, 201, "Mikhmon PPPoE Isolir profile and scheduler configured");
+            break;
+
+        case 'pppoe_reconnect':
+            $user = $request['username'] ?? '';
+            $profile = $request['profile'] ?? 'default';
+            $dueDate = $request['due_date'] ?? null;
+            $comment = $request['comment'] ?? null;
+            $res = $ros->pppoe()->reconnectCustomer($user, $profile, $dueDate, $comment);
+            Response::json($res, 200, "Customer {$user} reconnected successfully");
+            break;
+
+        case 'pppoe_isolate':
+            $user = $request['username'] ?? '';
+            $profile = $request['profile'] ?? 'ISOLIR';
+            $reason = $request['reason'] ?? 'Jatuh Tempo';
+            $res = $ros->pppoe()->isolateCustomer($user, $profile, $reason);
+            Response::json($res, 200, "Customer {$user} isolated");
+            break;
+
+        case 'pppoe_auto_isolate':
+            $profile = $request['profile'] ?? 'ISOLIR';
+            $currentDate = $request['date'] ?? '';
+            $res = $ros->pppoe()->autoIsolateOverdue($profile, $currentDate);
+            Response::json($res, 200, "Auto-isolate sweep executed");
+            break;
+
+        // --- PER-ROUTER SESSION & MULTI-LOGGING ENDPOINTS ---
+        case 'router_session':
+            $sub = $request['sub_action'] ?? 'get';
+            $session = $ros->session();
+            if ($sub === 'set') {
+                $key = $request['key'] ?? '';
+                $val = $request['val'] ?? null;
+                if ($key) $session->set($key, $val);
+                Response::json(['status' => 'set', 'key' => $key, 'session' => $session->all()], 200, "Session key updated");
+            } elseif ($sub === 'clear' || $sub === 'destroy') {
+                $session->destroy();
+                Response::json(['status' => 'destroyed'], 200, "Router session cleared");
+            } else {
+                Response::json([
+                    'router_id'  => $ros->getRouterId(),
+                    'session_id' => $session->getSessionId(),
+                    'token'      => $session->getToken(),
+                    'is_valid'   => $session->isValid(),
+                    'data'       => $session->all(),
+                ], 200, "Router isolated session");
+            }
+            break;
+
+        case 'router_logs':
+            $limit = (int)($request['limit'] ?? 50);
+            $logs = $ros->getLogs($limit);
+            Response::json([
+                'router_id' => $ros->getRouterId(),
+                'total'     => count($logs),
+                'logs'      => $logs,
+            ], 200, "Multi-logging history for Router ID {$ros->getRouterId()}");
+            break;
+
+        // --- MULTI-CHAT BOT BROADCAST (TELEGRAM & WHATSAPP) ---
+        case 'bot_broadcast':
+            $msg = $request['message'] ?? '';
+            if (empty($msg)) {
+                Response::json(null, 400, 'Parameter message is required');
+            }
+            $target = $request['channel'] ?? 'all'; // 'telegram', 'whatsapp', or 'all'
+            $bot = $ros->bot();
+            if ($target === 'telegram') {
+                $res = $bot->sendTelegram($msg);
+            } elseif ($target === 'whatsapp') {
+                $res = $bot->sendWhatsApp($msg);
+            } else {
+                $res = $bot->broadcast($msg);
+            }
+            Response::json($res, 200, "Broadcast dispatched to notification channels");
+            break;
+
+        // --- MULTI-PTMP ROUTEROS CONNECTION ENDPOINTS ---
         case 'ptmp_detect':
             $res = $ros->ptmp()->detectHardware();
             Response::json($res, 200, "PTMP Hardware detection");
