@@ -611,6 +611,9 @@
             const queue = options.parentQueue || options.parent_queue || 'none';
             const pool = options.addressPool || options.address_pool || 'none';
             const shared = String(options.sharedUsers || options.shared_users || '1');
+            const addMacCookie = options.addMacCookie || options.add_mac_cookie || 'yes';
+            const macCookieTimeout = options.macCookieTimeout || options.mac_cookie_timeout || '1d 00:00:00';
+            const insertQueueBefore = options.insertQueueBefore || options.insert_queue_before || 'bottom';
             const modeChar = mode.toLowerCase().includes('n') ? 'N' : 'R';
             const sessionId = options.sessionId || Math.floor(1000000 + Math.random() * 9000000);
             const source = (validity.endsWith('d') && parseInt(validity) >= 30) ? '$month$year' : '$date';
@@ -623,6 +626,9 @@
                 'shared-users': shared,
                 'rate-limit': rateLimit,
                 'address-pool': pool,
+                'add-mac-cookie': addMacCookie,
+                'mac-cookie-timeout': macCookieTimeout,
+                'insert-queue-before': insertQueueBefore,
                 'on-login': onLogin,
             };
             return this.ros.create('ip/hotspot/user/profile', params);
@@ -680,6 +686,33 @@
         }
         async bindCallerId(username, macAddress) {
             return this.ros.set('ppp/secret', username, { 'caller-id': macAddress });
+        }
+        async setupMikhmonCustomerProfile(name = 'P3', rateLimit = '3M/3M', localAddress = '192.168.100.1', remoteAddress = 'isolir', validity = '30d', options = {}) {
+            const onUp = `:put (",isolir,${validity},");{:local date [ /system clock get date ];:local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];:local comment [ /ppp secret get [ /ppp secret find where name="$user" ] comment]; :local ucode [:pick $comment 0 5]; :local komen [:pick $comment 6 100];:if ($ucode = "lunas") do={ /sys scheduler add name="$user" disabled=no start-date=$date interval="${validity}"; :delay 2s; :local exp [ /sys scheduler get [ /sys scheduler find where name="$user" ] next-run]; :local getxp [len $exp]; :if ($getxp = 15) do={ :local d [:pick $exp 0 6]; :local t [:pick $exp 7 16]; :local s "/"; :local exp ("$d$s$year $t"); /ppp secret set comment="$exp | $komen" [find where name="$user"];}; :if ($getxp = 8) do={ /ppp secret set comment="$date $exp | $komen" [find where name="$user"];}; :if ($getxp > 15) do={ /ppp secret set comment="$exp | $komen" [find where name="$user"];}; /sys scheduler remove [find where name="$user"]; }}}}`;
+            const params = {
+                name,
+                'rate-limit': rateLimit,
+                'local-address': localAddress,
+                'remote-address': remoteAddress,
+                'dns-server': options.dns_server || options.dnsServer || '8.8.8.8,8.8.4.4',
+                'parent-queue': options.parent_queue || options.parentQueue || 'none',
+                'on-up': onUp,
+            };
+            return this.ros.create('ppp/profile', params);
+        }
+        async setupMikhmonIsolir(options = {}) {
+            const poolRange = options.pool_ranges || '10.10.10.2-10.10.10.254';
+            const local = options.local_address || '10.10.10.255';
+            const rate = options.rate_limit || '512k/512k';
+            try { await this.ros.create('ip/pool', { name: 'isolir', ranges: poolRange }); } catch (_) {}
+            return this.ros.create('ppp/profile', {
+                name: 'isolir',
+                'rate-limit': rate,
+                'local-address': local,
+                'remote-address': 'isolir',
+                'dns-server': '8.8.8.8,8.8.4.4',
+                comment: 'Profile untuk pelanggan yang diisolir',
+            });
         }
     }
 

@@ -79,11 +79,35 @@ $alertDispatch = $bot->broadcast("🚨 [ALERT] Router " . $ros->getRouterId() . 
 echo "    Broadcast Result: Telegram sent=" . ($alertDispatch['telegram']['sent'] ?? 0) . ", WhatsApp sent=" . ($alertDispatch['whatsapp']['sent'] ?? 0) . "\n\n";
 
 // -------------------------------------------------------------------------
-// 4. Mikhmon Official Hotspot User Profiles (V24h & V30D)
+// 4. Mikhmon Official Hotspot User Profiles (V15D, V24h & V30D)
 // -------------------------------------------------------------------------
 echo "[4] Mikhmon Official Hotspot User Profiles & Scripts:\n";
 
-// Example A: Profile "V24h" (3M/2M, 24h, Rp 8.000 / Rp 10.000, Mode remc/R, pool none)
+// Example A: Profile "V15D" (address-pool hs-pool-22, add-mac-cookie=yes, 3M/2M, 15d, Rp 0 / Rp 10.000, ntfc/N)
+$v15dCli = $ros->hotspot()->generateMikhmonProfileCliCommand(
+    'V15D',
+    '3M/2M',
+    '15d',
+    0,
+    10000,
+    'ntfc',
+    'Disable',
+    'none',
+    'hs-pool-22',
+    '1',
+    [
+        'session_id'          => '2608001',
+        'pool_ranges'         => '175.12.0.1-175.12.10.0, 175.12.10.2-175.12.255.254',
+        'add_mac_cookie'      => 'yes',
+        'mac_cookie_timeout'  => '1d 00:00:00',
+        'insert_queue_before' => 'bottom',
+    ]
+);
+
+echo "    [A] Profile 'V15D' (MAC-Cookie, Pool hs-pool-22, Mode ntfc / N, Jual Rp 10.000):\n";
+echo "        CLI Add : " . substr($v15dCli, 0, 120) . " ...\n\n";
+
+// Example B: Profile "V24h" (3M/2M, 24h, Rp 8.000 / Rp 10.000, Mode remc/R, pool none)
 $v24hScript = $ros->hotspot()->generateMikhmonOfficialOnLoginScript(
     'V24h',
     '24h',
@@ -107,11 +131,11 @@ $v24hCli = $ros->hotspot()->generateMikhmonProfileCliCommand(
     ['session_id' => '2312005']
 );
 
-echo "    [A] Profile 'V24h' (Mode remc / R, Rp 8.000, Jual Rp 10.000):\n";
+echo "    [B] Profile 'V24h' (Mode remc / R, Rp 8.000, Jual Rp 10.000):\n";
 echo "        CLI Add : " . substr($v24hCli, 0, 105) . " ...\"\n";
 echo "        Script  : " . substr($v24hScript, 0, 115) . " ...\n\n";
 
-// Example B: Profile "V30D" (3M/2M, 30d, Rp 0 / Rp 150.000, Mode ntfc/N, pool none)
+// Example C: Profile "V30D" (3M/2M, 30d, Rp 0 / Rp 150.000, Mode ntfc/N, pool none)
 $v30dScript = $ros->hotspot()->generateMikhmonOfficialOnLoginScript(
     'V30D',
     '30d',
@@ -135,37 +159,58 @@ $v30dCli = $ros->hotspot()->generateMikhmonProfileCliCommand(
     ['session_id' => '2608001']
 );
 
-echo "    [B] Profile 'V30D' (Mode ntfc / N, Rp 0, Jual Rp 150.000):\n";
+echo "    [C] Profile 'V30D' (Mode ntfc / N, Rp 0, Jual Rp 150.000):\n";
 echo "        CLI Add : " . substr($v30dCli, 0, 105) . " ...\"\n";
 echo "        Script  : " . substr($v30dScript, 0, 115) . " ...\n\n";
 
 // List available pools & queues for dropdown selection
 $availablePools = $ros->hotspot()->getPoolList();
 $availableQueues = $ros->hotspot()->getParentQueueList();
-echo "    [C] Available Options for UI Dropdowns:\n";
+echo "    [D] Available Options for UI Dropdowns:\n";
 echo "        Address Pools : " . json_encode($availablePools) . "\n";
 echo "        Parent Queues : " . json_encode($availableQueues) . "\n\n";
 
 // -------------------------------------------------------------------------
-// 5. Mikhmon Official PPPoE Isolir Script & Scheduler
+// 5. Mikhmon Official PPPoE Profiles & Isolir Infrastructure
 // -------------------------------------------------------------------------
-echo "[5] Mikhmon Official PPPoE Isolir Profile & Scheduler Generation:\n";
-$isolirScript = $ros->pppoe()->generatePppoeIsolirScript('ISOLIR');
-echo "    Generated PPPoE Auto-Isolir Script Preview:\n";
-$isoLines = explode("\n", $isolirScript);
-foreach (array_slice($isoLines, 0, 5) as $line) {
-    echo "      > {$line}\n";
+echo "[5] Mikhmon Official PPPoE Customer & Isolir Profiles:\n";
+$pppoeCli = $ros->pppoe()->generateMikhmonPppCliCommands(
+    'P3',
+    '3M/3M',
+    '192.168.100.1',
+    'isolir',
+    '30d'
+);
+echo "    PPPoE Complete CLI Setup (P3 + isolir Profile + isolir Pool + isolir Scheduler):\n";
+$lines = explode("\n", trim($pppoeCli));
+foreach (array_slice($lines, 0, 8) as $l) {
+    echo "      > " . (strlen($l) > 100 ? substr($l, 0, 97) . '...' : $l) . "\n";
 }
-echo "      > ... (Total " . count($isoLines) . " lines of RouterOS script)\n\n";
+echo "      > ... (Total " . strlen($pppoeCli) . " bytes of RouterOS CLI configuration)\n\n";
 
 // -------------------------------------------------------------------------
-// 6. PPPoE Customer Due Date & Reconnection Flow
+// 6. Complete Schedulers Registry (All 6 Mikhmon Schedulers)
 // -------------------------------------------------------------------------
-echo "[6] PPPoE Customer Billing & Reconnection Flow (Mikhmon Standard):\n";
-echo "    - Step 1: Set Due Date on Customer Secret: due:2026-11-20\n";
-echo "    - Step 2: Auto-Isolir checks due date. If overdue, switches profile to 'ISOLIR' & kicks active session\n";
-echo "    - Step 3: Customer pays bill -> reconnectCustomer('customer_01', '10MBPS', '2026-12-20')\n";
-echo "    - Step 4: Router reconnects user immediately on full speed and updates MySQL record.\n\n";
+echo "[6] Complete Mikhmon Schedulers Engine (All 6 Schedulers):\n";
+$allScheds = \RouterOSFramework\Core\Mikhmon::getAllSchedulers();
+foreach ($allScheds as $sName => $sCfg) {
+    echo "    - [{$sName}]\n";
+    echo "      Interval  : {$sCfg['interval']}\n";
+    echo "      Start-Time: {$sCfg['start-time']}\n";
+    echo "      Comment   : {$sCfg['comment']}\n";
+    echo "      Script Len: " . strlen($sCfg['on-event']) . " bytes\n";
+}
+echo "\n";
+
+// -------------------------------------------------------------------------
+// 7. PPPoE Customer Due Date & Reconnection Flow
+// -------------------------------------------------------------------------
+echo "[7] PPPoE Customer Billing & Reconnection Flow (Mikhmon Standard):\n";
+echo "    - Step 1: Customer secret created with comment 'lunas Paket 30 Hari'\n";
+echo "    - Step 2: Customer logs in -> Profile P3 on-up script sets comment '\$exp | \$komen'\n";
+echo "    - Step 3: Hourly scheduler 'isolir' checks expiration against clock\n";
+echo "    - Step 4: If overdue -> profile shifted to 'isolir', active kicked, comment marked 'BELUM BAYAR'\n";
+echo "    - Step 5: Customer pays bill -> comment reset to 'lunas ...' and profile shifted back to 'P3'\n\n";
 
 echo "====================================================================\n";
 echo " Mikhmon Official Profiles & Multi-Router Demo Successfully Finished!\n";

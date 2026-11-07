@@ -59,6 +59,33 @@ class Ip
         return $this->conn->write('/ip/pool/add', $params);
     }
 
+    /**
+     * Ensure an IP Pool exists, updating it if it already exists or creating it if not.
+     *
+     * @param string $name Pool name (e.g. 'isolir', 'hs-pool-22')
+     * @param string $ranges IP range (e.g. '10.10.10.2-10.10.10.254' or '175.12.0.1-175.12.10.0, 175.12.10.2-175.12.255.254')
+     * @param string $nextPool Optional next pool name
+     * @return array
+     */
+    public function ensurePool(string $name, string $ranges, string $nextPool = ''): array
+    {
+        $existing = $this->conn->read('/ip/pool/print', ['name' => $name]);
+        $params = [
+            'name'   => $name,
+            'ranges' => $ranges,
+        ];
+        if (!empty($nextPool)) {
+            $params['next-pool'] = $nextPool;
+        }
+
+        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
+            $id = $existing[0]['.id'] ?? $name;
+            return $this->conn->set('/ip/pool/set', $id, $params);
+        }
+
+        return $this->conn->write('/ip/pool/add', $params);
+    }
+
     public function removePool(string $name): array
     {
         $id = str_starts_with($name, '*') ? $name : ($this->conn->findIdByName('/ip/pool/print', $name) ?? $name);

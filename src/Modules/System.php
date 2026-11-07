@@ -95,6 +95,43 @@ class System
         return $this->conn->write('/system/scheduler/add', $params);
     }
 
+    /**
+     * Ensure a scheduler exists, updating it if it already exists or creating it if not.
+     *
+     * @param string $name Scheduler name
+     * @param string $onEvent Script to execute
+     * @param string $interval Run interval (e.g. '00:01:00', '1d 00:00:00')
+     * @param string $startTime Start time (e.g. 'startup', '00:00:00')
+     * @param string $startDate Start date
+     * @param string $comment Comment annotation
+     * @return array
+     */
+    public function ensureScheduler(
+        string $name,
+        string $onEvent,
+        string $interval = '1d',
+        string $startTime = 'startup',
+        string $startDate = '',
+        string $comment = ''
+    ): array {
+        $existing = $this->conn->read('/system/scheduler/print', ['name' => $name]);
+        $params = [
+            'name'     => $name,
+            'on-event' => $onEvent,
+            'interval' => $interval,
+        ];
+        if (!empty($startTime)) $params['start-time'] = $startTime;
+        if (!empty($startDate)) $params['start-date'] = $startDate;
+        if (!empty($comment)) $params['comment'] = $comment;
+
+        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
+            $id = $existing[0]['.id'] ?? $name;
+            return $this->conn->set('/system/scheduler/set', $id, $params);
+        }
+
+        return $this->conn->write('/system/scheduler/add', $params);
+    }
+
     public function removeScheduler(string $name): array
     {
         $id = str_starts_with($name, '*') ? $name : ($this->conn->findIdByName('/system/scheduler/print', $name) ?? $name);

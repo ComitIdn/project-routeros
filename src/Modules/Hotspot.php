@@ -869,18 +869,66 @@ class Hotspot
 
         $pool = (!empty($addressPool) && $addressPool !== 'none') ? $addressPool : 'none';
         $pQueue = (!empty($parentQueue) && $parentQueue !== 'none') ? $parentQueue : 'none';
+        $addMacCookie = $options['add_mac_cookie'] ?? ($options['mac_cookie'] ?? 'yes');
+        $macCookieTimeout = $options['mac_cookie_timeout'] ?? '1d 00:00:00';
+        $insertQueueBefore = $options['insert_queue_before'] ?? 'bottom';
         $escapedOnLogin = str_replace('"', '\"', $onLogin);
 
-        return "/ip hotspot user-profile add name=\"{$name}\" parent-queue=\"{$pQueue}\" shared-users=\"{$sharedUsers}\" rate-limit=\"{$rateLimit}\" address-pool=\"{$pool}\" on-login=\"{$escapedOnLogin}\"";
+        $cmd = '';
+        if ($pool !== 'none' && !empty($options['pool_ranges'])) {
+            $cmd .= "/ip pool add name=\"{$pool}\" address=\"{$options['pool_ranges']}\"\n";
+        }
+
+        $cmd .= "/ip hotspot user-profile add name=\"{$name}\" address-pool=\"{$pool}\" add-mac-cookie={$addMacCookie} mac-cookie-timeout=\"{$macCookieTimeout}\" rate-limit=\"{$rateLimit}\" shared-users={$sharedUsers} parent-queue=\"{$pQueue}\" insert-queue-before=\"{$insertQueueBefore}\" on-login=\"{$escapedOnLogin}\"";
+        return $cmd;
+    }
+
+    /**
+     * Get array of all 5 official Mikhmon Hotspot core schedulers.
+     *
+     * @return array<string, array>
+     */
+    public function getMikhmonCoreSchedulers(): array
+    {
+        return \RouterOSFramework\Core\Mikhmon::getCoreHotspotSchedulers();
+    }
+
+    /**
+     * Install or update the 5 official Mikhmon Hotspot core schedulers:
+     * - autoremove-report (cleans >3-month sales reports)
+     * - Expire-Monitor (v2603001) (checks certificates & expires/removes hotspot users)
+     * - Live-Report-Monitor (v2608001) (live daily & monthly sales report calculation)
+     * - Reset-Expire-Monitor (restores clock on reboot if RTC missing)
+     * - Reset-Expire-Monitor-Daily (daily refresh of expireMonitor certificate)
+     *
+     * @return array<string, array>
+     */
+    public function installMikhmonCoreSchedulers(): array
+    {
+        $scheds = \RouterOSFramework\Core\Mikhmon::getCoreHotspotSchedulers();
+        $results = [];
+        $system = new System($this->conn, $this->db);
+        foreach ($scheds as $schedName => $cfg) {
+            $results[$schedName] = $system->ensureScheduler(
+                $cfg['name'],
+                $cfg['on-event'],
+                $cfg['interval'],
+                $cfg['start-time'] ?? 'startup',
+                $cfg['start-date'] ?? '',
+                $cfg['comment'] ?? ''
+            );
+        }
+        return $results;
     }
 
     /**
      * Setup 100% authentic Mikhmon Official Hotspot user profile in RouterOS.
-     * Compatible with Mikhmon v3/v4 official scripts, parent queues, and address pool dropdowns.
+     * Compatible with Mikhmon v3/v4 official scripts, parent queues, address pool dropdowns,
+     * MAC cookie retention, and automatic background scheduler installation.
      *
-     * @param string $name Profile name (e.g. 'V24h', 'V30D')
+     * @param string $name Profile name (e.g. 'V15D', 'V24h', 'V30D')
      * @param string $rateLimit Bandwidth limit (e.g. '3M/2M', '2M/5M')
-     * @param string $validity Validity string (e.g. '24h', '30d', '1d', '3h')
+     * @param string $validity Validity string (e.g. '15d', '24h', '30d')
      * @param int|float $price Base / purchase price
      * @param mixed $sellingPriceOrExpiryMode Selling price to consumer OR expiryMode (for backward compatibility)
      * @param mixed $expiryModeOrOptions 'remc'|'ntfc'|'rem'|'ntf' OR options array
@@ -888,7 +936,7 @@ class Hotspot
      * @param string $parentQueue 'none' or simple queue name
      * @param string $addressPool 'none' or pool name (e.g. from /ip pool print)
      * @param string $sharedUsers Shared users count (default '1')
-     * @param array $options Extra parameters ('grace_period', 'session_id', 'source', 'install_cleaner')
+     * @param array $options Extra parameters ('grace_period', 'session_id', 'source', 'install_schedulers', 'pool_ranges', 'add_mac_cookie', 'mac_cookie_timeout', 'insert_queue_before')
      * @return array
      */
     public function setupMikhmonProfile(
@@ -930,6 +978,13 @@ class Hotspot
             if (isset($options['shared_users'])) $sharedUsers = (string)$options['shared_users'];
         }
 
+        // Auto ensure pool if pool name and ranges provided
+        $pool = (!empty($addressPool) && $addressPool !== 'none') ? $addressPool : 'none';
+        if ($pool !== 'none' && !empty($options['pool_ranges'])) {
+            $ip = new Ip($this->conn, $this->db);
+            $ip->ensurePool($pool, $options['pool_ranges']);
+        }
+
         $onLogin = $this->generateMikhmonOfficialOnLoginScript(
             $name,
             $validity,
@@ -945,9 +1000,12 @@ class Hotspot
             'rate-limit'          => $rateLimit,
             'shared-users'        => (string)$sharedUsers,
             'parent-queue'        => (!empty($parentQueue) && $parentQueue !== 'none') ? $parentQueue : 'none',
-            'address-pool'        => (!empty($addressPool) && $addressPool !== 'none') ? $addressPool : 'none',
+            'address-pool'        => $pool,
             'status-autorefresh'  => '1m',
             'transparent-proxy'   => 'no',
+            'add-mac-cookie'      => $options['add_mac_cookie'] ?? ($options['mac_cookie'] ?? 'yes'),
+            'mac-cookie-timeout'  => $options['mac_cookie_timeout'] ?? '1d 00:00:00',
+            'insert-queue-before' => $options['insert_queue_before'] ?? 'bottom',
             'on-login'            => $onLogin,
         ];
 
@@ -959,7 +1017,15 @@ class Hotspot
             $res = $this->conn->write('/ip/hotspot/user/profile/add', $params);
         }
 
-        $installCleaner = $options['install_cleaner'] ?? true;
+        // Automatically install official Mikhmon schedulers on RouterOS
+        $installSchedulers = $options['install_schedulers'] ?? true;
+        $schedResults = null;
+        if ($installSchedulers) {
+            $schedResults = $this->installMikhmonCoreSchedulers();
+        }
+
+        // Backward compatibility fallback cleaner scheduler
+        $installCleaner = $options['install_cleaner'] ?? false;
         if ($installCleaner) {
             $this->installExpiryCleanupScheduler(5);
         }
@@ -976,6 +1042,7 @@ class Hotspot
             'parent_queue'  => $params['parent-queue'],
             'address_pool'  => $params['address-pool'],
             'shared_users'  => $params['shared-users'],
+            'schedulers'    => $schedResults,
             'result'        => $res,
         ];
     }

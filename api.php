@@ -464,6 +464,57 @@ try {
             Response::json($res, 201, "Mikhmon PPPoE Isolir profile and scheduler configured");
             break;
 
+        case 'pppoe_customer_profile':
+            $name = $request['name'] ?? 'P3';
+            $rate = $request['rate_limit'] ?? '3M/3M';
+            $local = $request['local_address'] ?? '192.168.100.1';
+            $remote = $request['remote_address'] ?? 'isolir';
+            $validity = $request['validity'] ?? '30d';
+            $options = $request['options'] ?? [];
+            if (isset($request['parent_queue'])) $options['parent_queue'] = $request['parent_queue'];
+            if (isset($request['dns_server'])) $options['dns_server'] = $request['dns_server'];
+            if (isset($request['auto_isolir'])) $options['auto_isolir'] = (bool)$request['auto_isolir'];
+            if (isset($request['pool_ranges'])) $options['pool_ranges'] = $request['pool_ranges'];
+
+            $res = $ros->pppoe()->setupMikhmonCustomerProfile($name, $rate, $local, $remote, $validity, $options);
+            Response::json($res, 201, "Mikhmon PPPoE customer profile {$name} configured with auto-isolir");
+            break;
+
+        case 'mikhmon_schedulers':
+            $type = $request['type'] ?? 'all';
+            $sub = $request['sub_action'] ?? 'install';
+            if ($sub === 'get') {
+                $scheds = \RouterOSFramework\Core\Mikhmon::getAllSchedulers();
+                Response::json($scheds, 200, "Mikhmon schedulers definitions retrieved");
+            } else {
+                $results = [];
+                if ($type === 'all' || $type === 'hotspot') {
+                    $results['hotspot'] = $ros->hotspot()->installMikhmonCoreSchedulers();
+                }
+                if ($type === 'all' || $type === 'pppoe') {
+                    $results['pppoe'] = $ros->pppoe()->installMikhmonPppoeIsolirScheduler();
+                }
+                Response::json($results, 201, "Mikhmon schedulers installed/updated on RouterOS");
+            }
+            break;
+
+        case 'ip_ensure_pool':
+            $poolName = $request['name'] ?? '';
+            $ranges = $request['ranges'] ?? '';
+            $nextPool = $request['next_pool'] ?? '';
+            if (empty($poolName) || empty($ranges)) {
+                Response::json(['error' => 'Pool name and ranges are required'], 400, "Validation failed");
+            }
+            $res = $ros->ip()->ensurePool($poolName, $ranges, $nextPool);
+            Response::json($res, 201, "IP pool {$poolName} ensured on RouterOS");
+            break;
+
+        case 'mikhmon_setup_all':
+            $config = $request['config'] ?? $request;
+            $res = $ros->setupMikhmonAll($config);
+            Response::json($res, 201, "Mikhmon official infrastructure bootstrapped successfully");
+            break;
+
         case 'pppoe_reconnect':
             $user = $request['username'] ?? '';
             $profile = $request['profile'] ?? 'default';

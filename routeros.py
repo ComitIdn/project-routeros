@@ -372,6 +372,9 @@ class HotspotModule:
             "shared-users": shared,
             "rate-limit": rate_limit,
             "address-pool": pool,
+            "add-mac-cookie": opts.get("add_mac_cookie", "yes"),
+            "mac-cookie-timeout": opts.get("mac_cookie_timeout", "1d 00:00:00"),
+            "insert-queue-before": opts.get("insert_queue_before", "bottom"),
             "on-login": on_login,
         }
         return self.ros.create("/ip/hotspot/user/profile", params)
@@ -403,6 +406,58 @@ class PPPoEModule:
 
     def unsuspend(self, username: str, profile: str = "default") -> Any:
         return self.ros.set("/ppp/secret", username, {"profile": profile})
+
+    def setup_mikhmon_customer_profile(
+        self,
+        name: str = "P3",
+        rate_limit: str = "3M/3M",
+        local_address: str = "192.168.100.1",
+        remote_address: str = "isolir",
+        validity: str = "30d",
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        opts = options or {}
+        on_up = (
+            f':put (",isolir,{validity},");{{:local date [ /system clock get date ];:local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];'
+            ':local comment [ /ppp secret get [ /ppp secret find where name="$user" ] comment]; :local ucode [:pick $comment 0 5]; :local komen [:pick $comment 6 100];'
+            f':if ($ucode = "lunas") do={{ /sys scheduler add name="$user" disabled=no start-date=$date interval="{validity}"; :delay 2s; '
+            ':local exp [ /sys scheduler get [ /sys scheduler find where name="$user" ] next-run]; :local getxp [len $exp]; '
+            ':if ($getxp = 15) do={{ :local d [:pick $exp 0 6]; :local t [:pick $exp 7 16]; :local s "/"; :local exp ("$d$s$year $t"); /ppp secret set comment="$exp | $komen" [find where name="$user"];}}; '
+            ':if ($getxp = 8) do={{ /ppp secret set comment="$date $exp | $komen" [find where name="$user"];}}; '
+            ':if ($getxp > 15) do={{ /ppp secret set comment="$exp | $komen" [find where name="$user"];}}; '
+            '/sys scheduler remove [find where name="$user"]; }}}}'
+        )
+        params = {
+            "name": name,
+            "rate-limit": rate_limit,
+            "local-address": local_address,
+            "remote-address": remote_address,
+            "dns-server": opts.get("dns_server", "8.8.8.8,8.8.4.4"),
+            "parent-queue": opts.get("parent_queue", "none"),
+            "on-up": on_up,
+        }
+        return self.ros.create("/ppp/profile", params)
+
+    def setup_mikhmon_isolir(self, options: Optional[Dict[str, Any]] = None) -> Any:
+        opts = options or {}
+        pool_range = opts.get("pool_ranges", "10.10.10.2-10.10.10.254")
+        local = opts.get("local_address", "10.10.10.255")
+        rate = opts.get("rate_limit", "512k/512k")
+        try:
+            self.ros.create("/ip/pool", {"name": "isolir", "ranges": pool_range})
+        except Exception:
+            pass
+        return self.ros.create(
+            "/ppp/profile",
+            {
+                "name": "isolir",
+                "rate-limit": rate,
+                "local-address": local,
+                "remote-address": "isolir",
+                "dns-server": "8.8.8.8,8.8.4.4",
+                "comment": "Profile untuk pelanggan yang diisolir",
+            },
+        )
 
 
 class SystemModule:

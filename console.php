@@ -284,14 +284,78 @@ switch ($command) {
         break;
 
     case 'mikhmon:pppoe':
-        $profile = $args[1] ?? 'ISOLIR';
-        $local = $args[2] ?? '10.0.99.1';
-        $remote = $args[3] ?? '10.0.99.2-10.0.99.254';
-        $res = $ros->pppoe()->setupMikhmonIsolirProfile($profile, [
-            'local_address'  => $local,
-            'remote_address' => $remote,
+        $profile = $args[1] ?? 'P3';
+        $rate = $args[2] ?? '3M/3M';
+        $local = $args[3] ?? '192.168.100.1';
+        $remote = $args[4] ?? 'isolir';
+        $validity = $args[5] ?? '30d';
+
+        $res = $ros->pppoe()->setupMikhmonCustomerProfile($profile, $rate, $local, $remote, $validity);
+        echo "✨ Mikhmon PPPoE Customer Profile Configured:\n";
+        echo "   Name         : {$profile}\n";
+        echo "   Rate Limit   : {$rate}\n";
+        echo "   Local Address: {$local}\n";
+        echo "   Remote Pool  : {$remote}\n";
+        echo "   Validity     : {$validity}\n";
+        echo "   Auto-Isolir  : Pool, Profile & Hourly Scheduler ensured\n";
+        echo "   RouterOS Res : " . json_encode($res['result'] ?? $res) . "\n";
+        break;
+
+    case 'mikhmon:isolir':
+        $poolRange = $args[1] ?? '10.10.10.2-10.10.10.254';
+        $local = $args[2] ?? '10.10.10.255';
+        $rate = $args[3] ?? '512k/512k';
+        $res = $ros->pppoe()->installMikhmonIsolirInfrastructure($poolRange, $local, $rate);
+        echo "✨ Mikhmon Isolir Infrastructure Configured:\n";
+        echo "   Pool isolir   : {$poolRange}\n";
+        echo "   Profile isolir: {$rate} (GW: {$local})\n";
+        echo "   Scheduler     : hourly at startup (drops active when overdue)\n";
+        echo "   Result        : " . json_encode($res) . "\n";
+        break;
+
+    case 'mikhmon:schedulers':
+        $action = $args[1] ?? 'install';
+        if ($action === 'list') {
+            $scheds = \RouterOSFramework\Core\Mikhmon::getAllSchedulers();
+            echo "📋 Mikhmon Schedulers Registry (Total: " . count($scheds) . "):\n";
+            foreach ($scheds as $k => $s) {
+                echo "   - [{$k}] Interval: {$s['interval']} | Start: {$s['start-time']} | {$s['comment']}\n";
+            }
+        } else {
+            $hRes = $ros->hotspot()->installMikhmonCoreSchedulers();
+            $pRes = $ros->pppoe()->installMikhmonPppoeIsolirScheduler();
+            echo "✨ Mikhmon Schedulers Installed on RouterOS:\n";
+            echo "   [1] autoremove-report      : " . json_encode($hRes['autoremove-report'] ?? 'ok') . "\n";
+            echo "   [2] Expire-Monitor         : " . json_encode($hRes['Expire-Monitor'] ?? 'ok') . "\n";
+            echo "   [3] Live-Report-Monitor    : " . json_encode($hRes['Live-Report-Monitor'] ?? 'ok') . "\n";
+            echo "   [4] Reset-Expire-Monitor   : " . json_encode($hRes['Reset-Expire-Monitor'] ?? 'ok') . "\n";
+            echo "   [5] Reset-Expire-Monitor-D : " . json_encode($hRes['Reset-Expire-Monitor-Daily'] ?? 'ok') . "\n";
+            echo "   [6] isolir (PPPoE Monitor) : " . json_encode($pRes) . "\n";
+        }
+        break;
+
+    case 'mikhmon:setup-all':
+        echo "🚀 Bootstrapping full Mikhmon official ecosystem on RouterOS...\n";
+        $res = $ros->setupMikhmonAll([
+            'hotspot_profile' => [
+                'name'         => $args[1] ?? 'V15D',
+                'rate_limit'   => '3M/2M',
+                'validity'     => '15d',
+                'price'        => 0,
+                'selling_price'=> 10000,
+                'address_pool' => 'hs-pool-22',
+                'options'      => ['pool_ranges' => '175.12.0.1-175.12.10.0, 175.12.10.2-175.12.255.254']
+            ],
+            'pppoe_profile'   => [
+                'name'          => 'P3',
+                'rate_limit'    => '3M/3M',
+                'local_address' => '192.168.100.1',
+                'remote_address'=> 'isolir',
+                'validity'      => '30d'
+            ]
         ]);
-        echo !isset($res['error']) ? "✨ Mikhmon PPPoE Isolir Profile '{$profile}' & Auto-Isolir Scheduler berhasil dipasang!\n" : "❌ Gagal: " . json_encode($res) . "\n";
+        echo "✅ Bootstrap complete!\n";
+        echo json_encode($res, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
         break;
 
     case 'broadcast':

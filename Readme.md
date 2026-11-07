@@ -461,73 +461,104 @@ Konfigurasi statis juga dapat langsung disetel di [`config.php`](file:///data/da
 
 ## 👑 Mikhmon Official Hotspot & PPPoE Profiles dan Auto-Scheduler
 
-Dukungan 100% kompatibel dengan alur kerja **Mikhmon Online Official** untuk manajemen billing ISP RT/RW Net:
+Dukungan 100% kompatibel dan otentik dengan alur kerja **Mikhmon Online Official** untuk manajemen billing ISP RT/RW Net:
 
-### 1. Mikhmon Hotspot User Profile & On-Login Script
-Menciptakan profil voucher dengan script `on-login` resmi Mikhmon yang mencatat jam login pertama (`exp: date time`), sistem kalender otomatis (kabisat & pergantian tahun), penguncian MAC address (*anti-tethering*), dan pencatatan riwayat penjualan di `/system script`:
+### 1. Mikhmon Hotspot User Profile, MAC-Cookie & Schedulers
+Menciptakan profil voucher dengan script `on-login` resmi Mikhmon yang mencatat jam login pertama (`exp: date time`), sistem kalender otomatis (kabisat & pergantian tahun), penguncian MAC address (*anti-tethering*), MAC cookie timeout, dan pencatatan riwayat penjualan di `/system script`:
 
 ```php
-// Contoh 1: Profil "V24h" (24 Jam, 3M/2M, Beli Rp 8.000, Jual Rp 10.000, Mode remc / R)
+// Contoh 1: Profil "V15D" (15 Hari, Pool hs-pool-22, MAC Cookie 1d, 3M/2M, Jual Rp 10.000, Mode ntfc / N)
 $ros->hotspot()->setupMikhmonProfile(
-    'V24h',       // Nama profil
+    'V15D',       // Nama profil
     '3M/2M',      // Rate limit (rx/tx)
-    '24h',        // Masa aktif
-    8000,         // Harga modal (Rp 8.000)
+    '15d',        // Masa aktif
+    0,            // Harga modal
     10000,        // Harga jual (Rp 10.000)
-    'remc',       // Mode expired: 'remc' (Remove & Record), 'ntfc' (Notice), 'rem', 'ntf'
+    'ntfc',       // Mode expired: 'ntfc' (Notice & Limit 1s), 'remc' (Remove & Record), 'rem', 'ntf'
     'Disable',    // Lock user device MAC ('Disable' atau 'Enable')
     'none',       // Parent queue ('none' atau nama simple queue)
-    'none',       // Address pool ('none' atau nama pool dari /ip pool print)
-    '1'           // Shared users
+    'hs-pool-22', // Address pool (otomatis dibuat jika belum ada)
+    '1',          // Shared users
+    [
+        'pool_ranges'         => '175.12.0.1-175.12.10.0, 175.12.10.2-175.12.255.254',
+        'add_mac_cookie'      => 'yes',
+        'mac_cookie_timeout'  => '1d 00:00:00',
+        'insert_queue_before' => 'bottom',
+        'install_schedulers'  => true, // Auto pasang 5 core schedulers Mikhmon
+    ]
 );
 
-// Contoh 2: Profil "V30D" (30 Hari Bulanan, 3M/2M, Rp 0 / Rp 150.000, Mode ntfc / N)
+// Contoh 2: Profil "V24h" (24 Jam, 3M/2M, Beli Rp 8.000, Jual Rp 10.000, Mode remc / R)
 $ros->hotspot()->setupMikhmonProfile(
-    'V30D',
-    '3M/2M',
-    '30d',
-    0,
-    150000,
-    'ntfc',
-    'Disable',
-    'none',
-    'none',
-    '1'
+    'V24h', '3M/2M', '24h', 8000, 10000, 'remc', 'Disable', 'none', 'none', '1'
+);
+
+// Contoh 3: Profil "V30D" (30 Hari Bulanan, 3M/2M, Rp 0 / Rp 150.000, Mode ntfc / N)
+$ros->hotspot()->setupMikhmonProfile(
+    'V30D', '3M/2M', '30d', 0, 150000, 'ntfc', 'Disable', 'none', 'none', '1'
 );
 
 // Pilihan Pool & Queue untuk Dropdown UI:
-$pools = $ros->hotspot()->getPoolList();           // ['none', 'hs-pool-1', 'dhcp-pool-lan']
+$pools = $ros->hotspot()->getPoolList();           // ['none', 'hs-pool-22', 'dhcp-pool-lan']
 $queues = $ros->hotspot()->getParentQueueList();   // ['none', 'Total-Hotspot-50M']
 
 // Dapatkan command teks MikroTik CLI siap copy-paste:
-$cliCommand = $ros->hotspot()->generateMikhmonProfileCliCommand('V24h', '3M/2M', '24h', 8000, 10000);
-// Output: /ip hotspot user-profile add name="V24h" parent-queue="none" shared-users="1" rate-limit="3M/2M" address-pool="none" on-login=":put (\",remc,8000,24h,10000,,Disable,,mikhmon,...\"); ..."
+$cliCommand = $ros->hotspot()->generateMikhmonProfileCliCommand(
+    'V15D', '3M/2M', '15d', 0, 10000, 'ntfc', 'Disable', 'none', 'hs-pool-22', '1',
+    ['pool_ranges' => '175.12.0.1-175.12.10.0, 175.12.10.2-175.12.255.254']
+);
 ```
 
-### 2. Mikhmon PPPoE Isolir Profile, NAT Redirect & Auto-Isolir Scheduler
-Menyiapkan profil isolir lengkap dengan IP pool, limit isolir, address-list `ISOLIR_LIST`, redirect otomatis ke web landing page isolir, dan scheduler RouterOS yang memutus pelanggan otomatis saat jatuh tempo:
+### 2. Mikhmon PPPoE Customer Profile (P3), Isolir Profile, Pool & Scheduler
+Menyiapkan profil pelanggan PPPoE lengkap dengan script `on-up` Mikhmon (kalkulasi kadaluarsa saat status comment `lunas`), IP pool `isolir`, profil `isolir` (512k/512k), dan scheduler RouterOS otomatis yang memutus koneksi saat jatuh tempo:
 
 ```php
-// Setup profil isolir & pasang auto-isolir scheduler otomatis di RouterOS
-$ros->pppoe()->setupMikhmonIsolirProfile('ISOLIR', [
-    'local_address'      => '10.0.99.1',
-    'remote_address'     => '10.0.99.2-10.0.99.254',
-    'rate_limit'         => '128k/128k',
-    'address_list'       => 'ISOLIR_LIST',
-    'nat_redirect'       => true,  // Redirect port 80 ke server halaman tagihan
-    'install_scheduler'  => true,  // Pasang scheduler pengecek due date tiap jam
-    'scheduler_interval' => '1h',
+// Setup Profil Pelanggan "P3" (Otomatis melengkapi Pool isolir, Profile isolir & Scheduler isolir)
+$ros->pppoe()->setupMikhmonCustomerProfile(
+    'P3',             // Nama profil pelanggan
+    '3M/3M',          // Rate limit
+    '192.168.100.1',  // Local Address Gateway
+    'isolir',         // Remote Address (Pool isolir)
+    '30d',            // Masa berlaku paket
+    [
+        'parent_queue' => 'none',
+        'dns_server'   => '8.8.8.8,8.8.4.4',
+        'auto_isolir'  => true // Auto-generate pool isolir, profile isolir & scheduler isolir
+    ]
+);
+
+// Dapatkan CLI Script MikroTik Lengkap (Pool + Profiles + Scheduler):
+$pppCli = $ros->pppoe()->generateMikhmonPppCliCommands('P3', '3M/3M', '192.168.100.1', 'isolir', '30d');
+
+// Alur Pembayaran & Reaktivasi PPPoE:
+// 1. Tagihan baru terbit -> Comment diatur: "lunas Paket 30 Hari"
+// 2. Pelanggan connect -> Script on-up otomatis menghitung 30 hari ke depan & update comment: "$exp | Paket 30 Hari"
+// 3. Scheduler 'isolir' mengecek comment setiap jam. Jika $expd < $today:
+//    -> Profile diubah ke 'isolir' (512k/512k)
+//    -> Comment diubah: "BELUM BAYAR | Exp: ... | pelanggan: P3"
+//    -> Sesi aktif di /ppp active otomatis di-kick!
+// 4. Pelanggan bayar -> Cukup set comment kembali ke "lunas ..." dan kembalikan profil ke 'P3'.
+```
+
+### 3. Enam Mesin Scheduler Otomatis Mikhmon (Auto-Generated)
+Framework otomatis menginjeksi 6 scheduler resmi Mikhmon ke MikroTik RouterOS tanpa perlu pengaturan manual:
+
+| Nama Scheduler | Interval | Start Time | Fungsi Utama |
+|---|---|---|---|
+| **`autoremove-report`** | `1d 00:00:00` | `startup` | Menghapus script laporan penjualan `/system script` yang berusia lebih dari 3 bulan |
+| **`Expire-Monitor`** | `00:01:00` | `00:00:00` | Memonitor status sertifikat `expireMonitor`, memeriksa tanggal kadaluarsa voucher, limit 1s (mode N) / hapus user (mode R), dan kick `/ip hotspot active` |
+| **`Live-Report-Monitor`** | `00:02:00` | `startup` | Menghitung omset pendapatan harian dan bulanan secara *real-time* via sertifikat RouterOS tanpa membebani disk/NAND |
+| **`Reset-Expire-Monitor`** | `00:00:00` | `startup` | Memulihkan jam RouterOS pasca-reboot dari timestamp sertifikat untuk RouterBOARD tanpa baterai RTC |
+| **`Reset-Expire-Monitor-Daily`** | `1d 00:00:00` | `00:00:00` | Mereset sertifikat `expireMonitor` harian agar status counter selalu bersih dan akurat |
+| **`isolir`** | `01:00:00` | `startup` | Memonitor jatuh tempo `/ppp secret`, memindahkan pelanggan menunggak ke profil `isolir`, dan mendiskoneksikan koneksi aktif |
+
+### 4. 1-Klik Bootstrap Seluruh Ekosistem Mikhmon
+```php
+// Cukup 1 baris untuk menyiapkan seluruh infrastruktur Mikhmon di router baru:
+$ros->setupMikhmonAll([
+    'hotspot_profile' => ['name' => 'V15D', 'rate_limit' => '3M/2M', 'validity' => '15d', 'address_pool' => 'hs-pool-22'],
+    'pppoe_profile'   => ['name' => 'P3', 'rate_limit' => '3M/3M', 'validity' => '30d', 'remote_address' => 'isolir']
 ]);
-
-// Set tanggal jatuh tempo pada secret pelanggan (Format Mikhmon: due:YYYY-MM-DD)
-$ros->pppoe()->setPppoeDueDate('client_budi', '2026-11-20', 'INV-2026-001');
-
-// Isolir pelanggan manual dengan pencatatan alasan
-$ros->pppoe()->isolateCustomer('client_budi', 'ISOLIR', 'Menunggak 1 Bulan');
-
-// Reaktivasi Instan Pasca Pembayaran:
-// Mengembalikan profil normal, memperbarui due date bulan depan, dan memutus sesi isolir
-$ros->pppoe()->reconnectCustomer('client_budi', '10MBPS', '2026-12-20', 'Lunas Tagihan');
 ```
 
 ---
@@ -716,6 +747,13 @@ $stations = $ros->ptmp()->getStations();
 ```bash
 php console.php status
 php console.php protocol rest                      # Beralih protokol
+php console.php mikhmon:hotspot V15D 3M/2M 15d 0 10000 ntfc Disable hs-pool-22 # Buat profil Hotspot + pool
+php console.php mikhmon:pppoe P3 3M/3M 192.168.100.1 isolir 30d                # Buat profil PPPoE + isolir infra
+php console.php mikhmon:schedulers install         # Pasang seluruh 6 scheduler resmi Mikhmon
+php console.php mikhmon:isolir                     # Pasang pool, profile & scheduler isolir
+php console.php mikhmon:setup-all                  # 1-klik bootstrap seluruh ekosistem Mikhmon
+php console.php mikhmon:pools                      # Daftar IP pool untuk dropdown
+php console.php mikhmon:queues                     # Daftar Simple Queue untuk dropdown
 php console.php ptmp stations                      # Pantau sinyal CPE PTMP
 php console.php ptmp metrics                       # Health metrics PTMP
 php console.php ptmp kick 00:0C:42:AA:BB:CC        # Kick station CPE
@@ -739,6 +777,11 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | :--- | :--- | :--- |
 | `GET` | `/api.php?action=status` | Status resource, identitas router, dan metrik hotspot |
 | `POST` | `/api.php?action=batch` | **Batch Multi-Operation**: Eksekusi banyak operasi sekaligus dalam 1 roundtrip |
+| `POST` | `/api.php?action=mikhmon_setup_all` | **1-Click Bootstrap**: Pasang seluruh 6 schedulers, pool, profile isolir, dan profil pelanggan |
+| `POST` | `/api.php?action=hotspot_setup_mikhmon` | Setup profil Hotspot Mikhmon (MAC cookie, on-login, dropdown pool, auto schedulers) |
+| `POST` | `/api.php?action=pppoe_customer_profile` | Setup profil pelanggan PPPoE (`P3`) dengan script on-up & auto-isolir infrastructure |
+| `POST` | `/api.php?action=mikhmon_schedulers` | Pasang / perbarui 6 scheduler resmi Mikhmon di RouterOS |
+| `POST` | `/api.php?action=ip_ensure_pool` | Buat atau perbarui IP Pool di RouterOS |
 | `POST` | `/api.php?action=generate_voucher` | Generate batch voucher standar |
 | `POST` | `/api.php?action=generate_bulk_vouchers` | **Mass-Scale 10.000+ Vouchers**: Generate massal dengan batch SQL insert & CLI push |
 | `POST` | `/api.php?action=hotspot_create_profile` | Buat profil hotspot dengan on-login script (auto-expiry & auto-MAC lock) |
