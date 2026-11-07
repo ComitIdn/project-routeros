@@ -22,4 +22,10 @@ return [
         // 'username' => 'root',
         // 'password' => '',
     ],
+
+    // REST API Backend Security & Performance Settings
+    'api' => [
+        'key'   => '',   // Optional API Bearer Key / X-API-KEY (empty = allow local requests)
+        'gzip'  => true, // Enable gzip compression for lightning-fast JSON delivery
+    ],
 ];

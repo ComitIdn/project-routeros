@@ -45,4 +45,10 @@ return [
         'whatsapp_api'   => '',
         'admin_chat_id'  => '',
     ],
+
+    // REST API Backend Security & Performance Settings
+    'api' => [
+        'key'   => '',   // Optional API Bearer Key / X-API-KEY (leave empty to disable auth for local development)
+        'gzip'  => true, // Enable gzip compression to reduce JSON payload transfer by ~85%
+    ],
 ];

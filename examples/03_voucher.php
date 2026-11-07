@@ -26,6 +26,22 @@ $batch = $voucher->generateAndSave(10, [
 
 echo "✅ Generated {$batch['generated']} vouchers with batch tag: {$batch['batch_tag']}\n";
 
+// 1B. High-Throughput Engine Benchmark (Simulasi 5.000 s/d 10.000 Voucher Massal)
+$startBench = microtime(true);
+$bulkBatch = $voucher->generateFastBulk(2000, [
+    'prefix'       => 'MASS-',
+    'length'       => 6,
+    'characters'   => 'alphanumeric_upper',
+    'profile'      => '1HARI-5MB',
+    'limit_uptime' => '1d',
+    'price'        => 5000,
+    'batch_tag'    => 'mass-event-' . date('Ymd'),
+    'sync_mode'    => 'stock_only', // Disimpan ke SQL stock inventory, super cepat tanpa membebani CPU router
+    'save_db'      => true,
+]);
+$benchMs = round((microtime(true) - $startBench) * 1000, 2);
+echo "⚡ [Benchmark Massal] Berhasil generate & save {$bulkBatch['generated']} voucher ke Database dalam {$benchMs} ms!\n";
+
 // 2. Fetch vouchers from database
 $vouchersInDb = $voucher->getFromDb(['batch_tag' => $batch['batch_tag']]);
 

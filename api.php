@@ -18,13 +18,19 @@ require __DIR__ . '/vendor/autoload.php';
 use RouterOSFramework\Core\RouterOS;
 use RouterOSFramework\Core\Response;
 
-// Load framework
-$ros = RouterOS::withConfig(__DIR__ . '/config.php');
+$startTime = microtime(true);
+$rawConfig = file_exists(__DIR__ . '/config.php') ? require __DIR__ . '/config.php' : [];
+$apiConfig = $rawConfig['api'] ?? [];
+
+// Enable Gzip compression if supported and configured (reduces JSON payload size by 85-90%)
+if (!empty($apiConfig['gzip']) && extension_loaded('zlib') && !ob_get_level()) {
+    ob_start('ob_gzhandler');
+}
 
 // Allow CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-API-KEY');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(200);
@@ -35,6 +41,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 $inputJson = json_decode(file_get_contents('php://input'), true) ?: [];
 $request = array_merge($_GET, $_POST, $inputJson);
 $action = $request['action'] ?? ($request['endpoint'] ?? 'status');
+
+// API Key / Bearer Token Authentication (Optional security protection)
+$configuredApiKey = $apiConfig['key'] ?? '';
+if (!empty($configuredApiKey)) {
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $bearerToken = '';
+    if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+        $bearerToken = trim($matches[1]);
+    }
+    $passedKey = $_SERVER['HTTP_X_API_KEY'] ?? ($bearerToken ?: ($request['api_key'] ?? ''));
+
+    if ($passedKey !== $configuredApiKey) {
+        Response::json(['error' => 'Unauthorized: Invalid or missing API key'], 401, 'Unauthorized');
+        exit;
+    }
+}
+
+// Load framework
+$ros = RouterOS::withConfig(__DIR__ . '/config.php');
 
 // Optional runtime protocol switch: 'api', 'rest', 'ssh', 'telnet', 'auto'
 if (!empty($request['protocol'])) {
@@ -89,21 +114,145 @@ try {
         case 'generate_voucher':
             $count = (int)($request['count'] ?? 10);
             $profile = $request['profile'] ?? 'default';
-            $timeLimit = $request['time_limit'] ?? '1h';
+            $timeLimit = $request['time_limit'] ?? ($request['limit_uptime'] ?? '1h');
             $price = (float)($request['price'] ?? 5000);
             $prefix = $request['prefix'] ?? 'VC';
             $comment = $request['comment'] ?? 'Voucher API';
 
-            $result = $ros->voucher()->generate([
-                'count'      => $count,
-                'profile'    => $profile,
-                'time_limit' => $timeLimit,
-                'price'      => $price,
-                'prefix'     => $prefix,
-                'comment'    => $comment,
+            $result = $ros->voucher()->generate($count, [
+                'profile'      => $profile,
+                'limit_uptime' => $timeLimit,
+                'price'        => $price,
+                'prefix'       => $prefix,
+                'comment'      => $comment,
             ]);
 
             Response::json($result, 201, 'Vouchers successfully generated');
+            break;
+
+        // --- HIGH-SPEED MASS BULK VOUCHERS (UP TO 10,000+) ---
+        case 'generate_bulk_vouchers':
+            $count = (int)($request['count'] ?? 100);
+            $count = min(10000, max(1, $count));
+            $opts = [
+                'profile'           => $request['profile'] ?? 'default',
+                'limit_uptime'      => $request['limit_uptime'] ?? ($request['time_limit'] ?? ''),
+                'limit_bytes_total' => $request['limit_bytes'] ?? '',
+                'price'             => (float)($request['price'] ?? 5000),
+                'prefix'            => $request['prefix'] ?? 'VC',
+                'length'            => (int)($request['length'] ?? 6),
+                'characters'        => $request['characters'] ?? 'alphanumeric',
+                'user_mode'         => $request['user_mode'] ?? 'user_password',
+                'sync_mode'         => $request['sync_mode'] ?? 'auto',
+                'batch_tag'         => $request['batch_tag'] ?? ($request['comment'] ?? 'batch-' . date('Ymd-His')),
+                'save_db'           => true,
+            ];
+            $result = $ros->voucher()->generateFastBulk($count, $opts);
+            Response::json($result, 201, "Generated {$result['generated']} bulk vouchers in {$result['duration_ms']}ms");
+            break;
+
+        // --- MULTI-OPERATION BATCH ENDPOINT ---
+        case 'batch':
+            $batchRequests = $request['requests'] ?? [];
+            if (!is_array($batchRequests) || empty($batchRequests)) {
+                Response::json(null, 400, 'Parameter requests must be an array of operation payloads');
+            }
+            $batchResults = [];
+            foreach ($batchRequests as $idx => $req) {
+                $subAction = $req['action'] ?? '';
+                try {
+                    $subRes = match($subAction) {
+                        'status'     => ['connected' => $ros->isConnected(), 'resources' => $ros->system()->getResources()],
+                        'users'      => $ros->hotspot()->getUsers(),
+                        'active'     => $ros->hotspot()->getActiveTraffic(),
+                        'hosts'      => $ros->hotspot()->getHosts(),
+                        'vouchers'   => $ros->voucher()->getFromDb(['limit' => (int)($req['limit'] ?? 50)]),
+                        'pppoe'      => $ros->pppoe()->getUsers(),
+                        'interfaces' => $ros->interface()->getAll(),
+                        default      => ['error' => "Unsupported batch action: {$subAction}"],
+                    };
+                    $batchResults[$idx] = ['action' => $subAction, 'status' => 'success', 'data' => $subRes];
+                } catch (\Throwable $err) {
+                    $batchResults[$idx] = ['action' => $subAction, 'status' => 'error', 'error' => $err->getMessage()];
+                }
+            }
+            Response::json($batchResults, 200, 'Batch execution complete');
+            break;
+
+        // --- HOTSPOT PROFILE & ON-LOGIN SCRIPT ---
+        case 'hotspot_create_profile':
+            $name = $request['name'] ?? '';
+            if (empty($name)) {
+                Response::json(null, 400, 'Parameter name is required');
+            }
+            $rate = $request['rate_limit'] ?? '2M/5M';
+            $validity = $request['validity'] ?? '1d';
+            $profileOpts = [
+                'shared_users'   => (string)($request['shared_users'] ?? '1'),
+                'lock_mac'       => isset($request['lock_mac']) ? (bool)$request['lock_mac'] : true,
+                'track_expiry'   => true,
+                'telegram_token' => $request['telegram_token'] ?? '',
+                'telegram_chat_id' => $request['telegram_chat_id'] ?? '',
+            ];
+            $res = $ros->hotspot()->createVoucherProfile($name, $rate, $validity, $profileOpts);
+            Response::json($res, 201, "Hotspot profile {$name} created with automated on-login expiry");
+            break;
+
+        // --- FIREWALL SECURITY HARDENING ---
+        case 'firewall_harden':
+            $lan = $request['lan_interface'] ?? 'bridge';
+            $wan = $request['wan_interface'] ?? null;
+            $res = $ros->firewall()->hardenServerBaseline($lan, $wan);
+            Response::json($res, 200, "Enterprise server firewall hardened");
+            break;
+
+        case 'firewall_bruteforce':
+            $ports = !empty($request['ports']) ? (is_array($request['ports']) ? $request['ports'] : explode(',', $request['ports'])) : [22, 8291, 8728, 8729];
+            $res = $ros->firewall()->protectBruteForce($ports);
+            Response::json($res, 200, "Brute-force protection rules active");
+            break;
+
+        case 'firewall_fasttrack':
+            $res = $ros->firewall()->enableFastTrack();
+            Response::json($res, 200, "FastTrack connection acceleration enabled");
+            break;
+
+        // --- SERVER INTERFACES ---
+        case 'interfaces':
+            $res = $ros->interface()->getAll();
+            Response::json($res, 200, "All router interfaces");
+            break;
+
+        case 'sfp':
+            $res = $ros->interface()->getSfp();
+            Response::json($res, 200, "SFP fiber interfaces");
+            break;
+
+        case 'bonding':
+            $res = $ros->interface()->getBonding();
+            Response::json($res, 200, "LACP Bonding interfaces");
+            break;
+
+        case 'vrrp':
+            $res = $ros->interface()->getVrrp();
+            Response::json($res, 200, "VRRP HA interfaces");
+            break;
+
+        case 'vlans':
+            $res = $ros->interface()->getVlans();
+            Response::json($res, 200, "VLAN 802.1Q interfaces");
+            break;
+
+        case 'interface_traffic':
+            $iface = $request['interface'] ?? 'ether1';
+            $res = $ros->interface()->monitorTraffic($iface);
+            Response::json($res, 200, "Realtime traffic on {$iface}");
+            break;
+
+        // --- DATABASE OPERATIONAL STATS ---
+        case 'database_stats':
+            $stats = $ros->db() ? $ros->db()->stats() : ['driver' => 'none', 'message' => 'Database not enabled'];
+            Response::json($stats, 200, "Database operational metrics");
             break;
 
         // --- KICK USER ---

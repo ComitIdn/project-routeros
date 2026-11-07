@@ -52,6 +52,31 @@ class Toggler
     }
 
     /**
+     * Enable multiple items in batches.
+     *
+     * @param string $path
+     * @param array $idsOrNames
+     * @param int $chunkSize
+     * @return array
+     */
+    public function enableBatch(string $path, array $idsOrNames, int $chunkSize = 50): array
+    {
+        $actionPath = $this->normalizeActionPath($path, 'enable');
+        $resolved = [];
+        foreach ($idsOrNames as $item) {
+            $id = $this->resolveId($item, $path);
+            if (!empty($id)) $resolved[] = $id;
+        }
+
+        $count = 0;
+        foreach (array_chunk($resolved, max(1, $chunkSize)) as $chunk) {
+            $this->conn->enable($actionPath, implode(',', $chunk));
+            $count += count($chunk);
+        }
+        return ['action' => 'enable', 'count' => $count];
+    }
+
+    /**
      * Disable an item.
      *
      * @param string $path
@@ -63,6 +88,31 @@ class Toggler
         $id = $this->resolveId($idOrName, $path);
         $actionPath = $this->normalizeActionPath($path, 'disable');
         return $this->conn->disable($actionPath, $id);
+    }
+
+    /**
+     * Disable multiple items in batches.
+     *
+     * @param string $path
+     * @param array $idsOrNames
+     * @param int $chunkSize
+     * @return array
+     */
+    public function disableBatch(string $path, array $idsOrNames, int $chunkSize = 50): array
+    {
+        $actionPath = $this->normalizeActionPath($path, 'disable');
+        $resolved = [];
+        foreach ($idsOrNames as $item) {
+            $id = $this->resolveId($item, $path);
+            if (!empty($id)) $resolved[] = $id;
+        }
+
+        $count = 0;
+        foreach (array_chunk($resolved, max(1, $chunkSize)) as $chunk) {
+            $this->conn->disable($actionPath, implode(',', $chunk));
+            $count += count($chunk);
+        }
+        return ['action' => 'disable', 'count' => $count];
     }
 
     /**

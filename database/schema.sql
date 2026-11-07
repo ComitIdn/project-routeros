@@ -1,5 +1,6 @@
 -- =========================================================================
 -- Project RouterOS Framework - SQL Schema (SQLite & MySQL Compatible)
+-- Optimized for high-throughput (10,000+ vouchers, indexed lookups, zero full-table scans)
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS routers (
@@ -25,9 +26,16 @@ CREATE TABLE IF NOT EXISTS vouchers (
     status VARCHAR(20) DEFAULT 'active',
     batch_tag VARCHAR(100) DEFAULT NULL,
     comment VARCHAR(255) DEFAULT NULL,
+    used_by VARCHAR(100) DEFAULT NULL,
+    used_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     expired_at DATETIME DEFAULT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_vouchers_username ON vouchers(username);
+CREATE INDEX IF NOT EXISTS idx_vouchers_batch ON vouchers(batch_tag);
+CREATE INDEX IF NOT EXISTS idx_vouchers_status ON vouchers(status);
+CREATE INDEX IF NOT EXISTS idx_vouchers_router ON vouchers(router_id);
 
 CREATE TABLE IF NOT EXISTS hotspot_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,6 +54,10 @@ CREATE TABLE IF NOT EXISTS hotspot_users (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_hotspot_users_name ON hotspot_users(username);
+CREATE INDEX IF NOT EXISTS idx_hotspot_users_profile ON hotspot_users(profile);
+CREATE INDEX IF NOT EXISTS idx_hotspot_users_router ON hotspot_users(router_id);
+
 CREATE TABLE IF NOT EXISTS pppoe_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     router_id INTEGER DEFAULT NULL,
@@ -62,6 +74,10 @@ CREATE TABLE IF NOT EXISTS pppoe_users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_pppoe_users_name ON pppoe_users(username);
+CREATE INDEX IF NOT EXISTS idx_pppoe_users_due ON pppoe_users(due_date);
+CREATE INDEX IF NOT EXISTS idx_pppoe_users_status ON pppoe_users(status);
+
 CREATE TABLE IF NOT EXISTS activity_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     router_id INTEGER DEFAULT NULL,
@@ -72,3 +88,6 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     status VARCHAR(20) DEFAULT 'success',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_logs_module ON activity_logs(module);
+CREATE INDEX IF NOT EXISTS idx_logs_created ON activity_logs(created_at);

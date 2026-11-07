@@ -27,9 +27,28 @@ class Voucher
      * @param int $count
      * @param array $options
      * @return array
+    /**
+     * Generate vouchers with support for both small batches and massive scales (up to 10,000+).
+     * Accepts either (int $count, array $options) or (array $options).
+     *
+     * @param int|array $count Number of vouchers OR array of options
+     * @param array $options Configuration parameters
+     * @return array
      */
-    public function generate(int $count, array $options = []): array
+    public function generate($count, array $options = []): array
     {
+        if (is_array($count)) {
+            $options = $count;
+            $count = (int)($options['count'] ?? 10);
+        } else {
+            $count = (int)$count;
+        }
+
+        // Auto-switch to high-speed batch pipeline for counts >= 20 to prevent socket saturation
+        if ($count >= 20 || !empty($options['fast']) || !empty($options['sync_mode'])) {
+            return $this->generateFastBulk($count, $options);
+        }
+
         $length = (int)($options['length'] ?? 6);
         $charType = $options['characters'] ?? 'alphanumeric';
         $prefix = $options['prefix'] ?? '';
@@ -44,10 +63,15 @@ class Voucher
         $vouchers = [];
         $errors = [];
         $successCount = 0;
+        $seen = [];
 
         for ($i = 0; $i < $count; $i++) {
-            $code = Helper::randomString($length, $charType);
-            $username = $prefix . $code;
+            do {
+                $code = Helper::randomString($length, $charType);
+                $username = $prefix . $code;
+            } while (isset($seen[$username]));
+            $seen[$username] = true;
+
             $password = ($userMode === 'user_password') ? $username : Helper::randomString($length, $charType);
 
             $params = [
@@ -91,37 +115,185 @@ class Voucher
     }
 
     /**
-     * Generate vouchers, push to MikroTik RouterOS, AND save to SQL Database in one call.
+     * High-speed mass voucher generation engine (optimized for 1,000 to 10,000+ vouchers).
+     * Generates collision-free codes in-memory, batches database inserts, and pushes to RouterOS
+     * via compact CLI scripts in a single network roundtrip.
      *
      * @param int $count
+     * @param array $options [
+     *    'length'            => 6,
+     *    'characters'        => 'alphanumeric'|'numeric'|'alpha'|'alphanumeric_upper',
+     *    'prefix'            => 'VC',
+     *    'user_mode'         => 'user_password'|'user_diff_password',
+     *    'profile'           => 'default',
+     *    'limit_uptime'      => '1h',
+     *    'limit_bytes'       => '',
+     *    'price'             => 5000,
+     *    'batch_tag'         => 'batch-xxx',
+     *    'sync_mode'         => 'immediate'|'script_only'|'stock_only'|'auto',
+     *    'save_db'           => bool,
+     *    'save_json'         => bool,
+     * ]
+     * @param int|null $routerId
+     * @return array
+     */
+    public function generateFastBulk(int $count, array $options = [], ?int $routerId = null): array
+    {
+        $startTime = microtime(true);
+        $length = (int)($options['length'] ?? 6);
+        $charType = $options['characters'] ?? 'alphanumeric';
+        $prefix = $options['prefix'] ?? '';
+        $userMode = $options['user_mode'] ?? 'user_password';
+        $profile = $options['profile'] ?? 'default';
+        $limitUptime = $options['limit-uptime'] ?? ($options['limit_uptime'] ?? '');
+        $limitBytes = $options['limit-bytes-total'] ?? ($options['limit_bytes'] ?? '');
+        $server = $options['server'] ?? 'all';
+        $batchTag = $options['comment'] ?? ($options['batch_tag'] ?? 'batch-' . date('Ymd-His'));
+        $price = (float)($options['price'] ?? 0);
+        $syncMode = $options['sync_mode'] ?? 'auto'; // 'auto', 'immediate', 'script_only', 'stock_only'
+        $saveDb = isset($options['save_db']) ? (bool)$options['save_db'] : ($this->db !== null);
+        $saveJson = !empty($options['save_json']);
+
+        $vouchers = [];
+        $dbRows = [];
+        $now = date('Y-m-d H:i:s');
+        $seen = [];
+
+        // 1. In-memory ultra-fast collision-free generation
+        for ($i = 0; $i < $count; $i++) {
+            do {
+                $code = Helper::randomString($length, $charType);
+                $username = $prefix . $code;
+            } while (isset($seen[$username]));
+            $seen[$username] = true;
+
+            $password = ($userMode === 'user_password') ? $username : Helper::randomString($length, $charType);
+
+            $voucherRecord = [
+                'username'          => $username,
+                'password'          => $password,
+                'profile'           => $profile,
+                'limit_uptime'      => $limitUptime,
+                'limit_bytes_total' => $limitBytes,
+                'price'             => $price,
+                'status'            => 'active',
+                'batch_tag'         => $batchTag,
+                'comment'           => $batchTag,
+                'created_at'        => $now,
+            ];
+
+            $vouchers[] = $voucherRecord;
+
+            if ($saveDb) {
+                $dbRows[] = array_merge(['router_id' => $routerId], $voucherRecord);
+            }
+        }
+
+        // 2. High-speed multi-row batch insert into SQL Database (MySQL / SQLite)
+        $dbInserted = 0;
+        if ($saveDb && $this->db && !empty($dbRows)) {
+            $dbInserted = $this->db->insertBatch('vouchers', $dbRows, 1000);
+            $this->db->log('Voucher', 'Bulk Fast Generate', $batchTag, "Generated and saved {$dbInserted} vouchers", 'success', $routerId);
+        }
+
+        // 3. Optional batch append to JSON Flat-Store
+        if ($saveJson && $this->jsonStorage) {
+            $this->jsonStorage->pushBatch('vouchers', $vouchers);
+        }
+
+        // 4. MikroTik RouterOS Synchronization
+        $rosSynced = false;
+        $rosError = null;
+
+        if ($syncMode !== 'stock_only') {
+            $script = $this->generateRscScript($vouchers, [
+                'server'      => $server,
+                'batch_tag'   => $batchTag,
+            ]);
+
+            if ($syncMode === 'script_only') {
+                $rosSynced = true;
+            } else {
+                // Execute via single terminal script execution or chunked writes
+                try {
+                    $terminalResult = $this->conn->execRaw($script);
+                    $rosSynced = !empty($terminalResult) && !isset($terminalResult['error']);
+                } catch (\Throwable $e) {
+                    $rosError = $e->getMessage();
+                    $rosSynced = false;
+                }
+            }
+        }
+
+        $durationMs = round((microtime(true) - $startTime) * 1000, 2);
+
+        return [
+            'batch_tag'     => $batchTag,
+            'requested'     => $count,
+            'generated'     => count($vouchers),
+            'db_saved'      => $dbInserted,
+            'ros_synced'    => $rosSynced,
+            'ros_error'     => $rosError,
+            'duration_ms'   => $durationMs,
+            'vouchers'      => $vouchers,
+        ];
+    }
+
+    /**
+     * Generate compact RouterOS CLI script (.rsc) for adding vouchers in bulk.
+     * Can be imported directly on MikroTik via terminal with: /import file=vouchers.rsc
+     *
+     * @param array $vouchers Array of voucher records
+     * @param array $options
+     * @return string
+     */
+    public function generateRscScript(array $vouchers, array $options = []): string
+    {
+        $server = $options['server'] ?? '';
+        $lines = [];
+        $lines[] = "# ========================================================";
+        $lines[] = "# Project RouterOS Framework - High-Throughput Voucher Batch";
+        $lines[] = "# Generated at: " . date('Y-m-d H:i:s') . " | Total: " . count($vouchers);
+        $lines[] = "# ========================================================";
+        $lines[] = "/ip hotspot user";
+
+        foreach ($vouchers as $v) {
+            $cmd = "add name=\"{$v['username']}\" password=\"{$v['password']}\" profile=\"{$v['profile']}\" comment=\"{$v['batch_tag']}\"";
+            if (!empty($server) && $server !== 'all') {
+                $cmd .= " server=\"{$server}\"";
+            }
+            if (!empty($v['limit_uptime'])) {
+                $cmd .= " limit-uptime=\"{$v['limit_uptime']}\"";
+            }
+            if (!empty($v['limit_bytes_total'])) {
+                $cmd .= " limit-bytes-total=\"{$v['limit_bytes_total']}\"";
+            }
+            $lines[] = $cmd;
+        }
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * Generate vouchers, push to MikroTik RouterOS, AND save to SQL Database in one call.
+     * Automatically chooses the high-speed batch path when count >= 20.
+     *
+     * @param int|array $count
      * @param array $options
      * @param int|null $routerId
      * @return array
      */
-    public function generateAndSave(int $count, array $options = [], ?int $routerId = null): array
+    public function generateAndSave($count, array $options = [], ?int $routerId = null): array
     {
-        $batch = $this->generate($count, $options);
-
-        if ($this->db && !empty($batch['vouchers'])) {
-            foreach ($batch['vouchers'] as $v) {
-                $this->db->insert('vouchers', [
-                    'router_id'         => $routerId,
-                    'username'          => $v['username'],
-                    'password'          => $v['password'],
-                    'profile'           => $v['profile'],
-                    'limit_uptime'      => $v['limit_uptime'],
-                    'limit_bytes_total' => $v['limit_bytes_total'],
-                    'price'             => $v['price'],
-                    'status'            => 'active',
-                    'batch_tag'         => $v['batch_tag'],
-                    'comment'           => $v['comment'],
-                    'created_at'        => $v['created_at'],
-                ]);
-            }
-            $this->db->log('Voucher', 'Batch Generate', $batch['batch_tag'], "Generated {$batch['generated']} vouchers", 'success', $routerId);
+        if (is_array($count)) {
+            $options = $count;
+            $count = (int)($options['count'] ?? 10);
+        } else {
+            $count = (int)$count;
         }
 
-        return $batch;
+        $options['save_db'] = true;
+        return $this->generateFastBulk($count, $options, $routerId);
     }
 
     /**
@@ -179,6 +351,7 @@ class Voucher
 
     /**
      * Delete voucher batch from MikroTik and SQL Database.
+     * Uses batch ID chunking to delete thousands of vouchers in seconds.
      *
      * @param string $batchTag
      * @return array
@@ -189,10 +362,12 @@ class Voucher
         $users = $this->conn->read('/ip/hotspot/user/print', ['comment' => $batchTag]);
         $rosRemoved = 0;
         if (!empty($users) && is_array($users) && !isset($users['error'])) {
-            foreach ($users as $u) {
-                if (isset($u['.id'])) {
-                    $this->conn->remove('/ip/hotspot/user/remove', $u['.id']);
-                    $rosRemoved++;
+            $ids = array_filter(array_column($users, '.id'));
+            if (!empty($ids)) {
+                // Remove in chunks of 50 via comma-separated IDs for maximum compatibility
+                foreach (array_chunk($ids, 50) as $chunk) {
+                    $this->conn->remove('/ip/hotspot/user/remove', implode(',', $chunk));
+                    $rosRemoved += count($chunk);
                 }
             }
         }

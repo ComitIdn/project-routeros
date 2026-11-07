@@ -9,6 +9,7 @@ namespace RouterOSFramework\Core;
 class JsonStorage
 {
     private string $storageDir;
+    private array $memoryCache = [];
 
     /**
      * JsonStorage constructor.
@@ -38,29 +39,38 @@ class JsonStorage
     }
 
     /**
-     * Read all data from a JSON file.
+     * Read all data from a JSON file (with internal request caching).
      *
      * @param string $file
+     * @param bool $forceReload
      * @return array
      */
-    public function all(string $file): array
+    public function all(string $file, bool $forceReload = false): array
     {
+        if (!$forceReload && isset($this->memoryCache[$file])) {
+            return $this->memoryCache[$file];
+        }
+
         $path = $this->resolvePath($file);
         if (!file_exists($path)) {
+            $this->memoryCache[$file] = [];
             return [];
         }
 
         $content = file_get_contents($path);
         if (!$content) {
+            $this->memoryCache[$file] = [];
             return [];
         }
 
         $decoded = json_decode($content, true);
-        return is_array($decoded) ? $decoded : [];
+        $result = is_array($decoded) ? $decoded : [];
+        $this->memoryCache[$file] = $result;
+        return $result;
     }
 
     /**
-     * Save full array data to a JSON file.
+     * Save full array data to a JSON file atomically with LOCK_EX.
      *
      * @param string $file
      * @param array $data
@@ -70,7 +80,11 @@ class JsonStorage
     {
         $path = $this->resolvePath($file);
         $encoded = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        return file_put_contents($path, $encoded, LOCK_EX) !== false;
+        $res = file_put_contents($path, $encoded, LOCK_EX) !== false;
+        if ($res) {
+            $this->memoryCache[$file] = $data;
+        }
+        return $res;
     }
 
     /**
@@ -141,6 +155,37 @@ class JsonStorage
             $item['created_at'] = date('Y-m-d H:i:s');
         }
         $data[] = $item;
+        return $this->saveAll($file, $data);
+    }
+
+    /**
+     * Append multiple records at once with a single disk write.
+     * Crucial for high-speed bulk voucher and user generation without I/O thrashing.
+     *
+     * @param string $file
+     * @param array $items
+     * @return bool
+     */
+    public function pushBatch(string $file, array $items): bool
+    {
+        if (empty($items)) {
+            return true;
+        }
+
+        $data = $this->all($file);
+        $nextId = count($data) > 0 ? (max(array_column($data, 'id') ?: [0]) + 1) : 1;
+        $now = date('Y-m-d H:i:s');
+
+        foreach ($items as &$item) {
+            if (!isset($item['id'])) {
+                $item['id'] = $nextId++;
+            }
+            if (!isset($item['created_at'])) {
+                $item['created_at'] = $now;
+            }
+            $data[] = $item;
+        }
+
         return $this->saveAll($file, $data);
     }
 

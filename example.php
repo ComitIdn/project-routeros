@@ -97,24 +97,33 @@ echo "🔹 [PTMP Set NV2]     \$ros->ptmp()->setProtocol(\$apInterface, 'nv2');\
 
 /*
 |--------------------------------------------------------------------------
-| 4. HOTSPOT & VOUCHER ENGINE
+| 4. HOTSPOT & VOUCHER ENGINE (MASS SCALE UP TO 10.000 VOUCHERS)
 |--------------------------------------------------------------------------
+| On-login auto-expiry, MAC lock, single-roundtrip CLI script push, dan batch SQL insert.
 */
 
 if ($ros->isConnected()) {
-    $batch = $ros->voucher()->generateAndSave(5, [
-        'prefix'            => 'VC-',
-        'profile'           => 'default',
-        'limit-uptime'      => '2h',
-        'limit-bytes-total' => '1073741824',
-        'price'             => 5000,
-        'batch_tag'         => 'demo-batch',
+    // A. Buat profil Hotspot dengan On-Login script otomatis (Auto Expiry & Auto MAC Lock)
+    $ros->hotspot()->createVoucherProfile('1HARI-5MB', '2M/5M', '1d', [
+        'shared_users' => '1',
+        'lock_mac'     => true,
+        'track_expiry' => true,
     ]);
-    echo "✅ Berhasil membuat 5 voucher Hotspot (Batch ID: {$batch['batch_id']})\n";
+
+    // B. Bulk Fast Generate 100 voucher langsung ke Database & RouterOS
+    $batch = $ros->voucher()->generateAndSave(100, [
+        'prefix'       => 'VC-',
+        'profile'      => '1HARI-5MB',
+        'limit_uptime' => '1d',
+        'price'        => 5000,
+        'batch_tag'    => 'demo-mass-' . date('Ymd'),
+    ]);
+    echo "✅ Berhasil generate {$batch['generated']} voucher Hotspot dalam {$batch['duration_ms']} ms\n";
 } else {
-    echo "\n--- Hotspot & Voucher Engine ---\n";
-    echo "🔹 [Voucher] \$batch = \$ros->voucher()->generateAndSave(10, ['profile' => '1jam', 'price' => 3000]);\n";
-    echo "🔹 [Hotspot] \$ros->hotspot()->kickUser('budi');\n";
+    echo "\n--- Hotspot & Voucher Engine (Mass-Scale) ---\n";
+    echo "🔹 [On-Login Profile] \$ros->hotspot()->createVoucherProfile('1HARI-5MB', '2M/5M', '1d');\n";
+    echo "🔹 [Fast Bulk 10.000] \$ros->voucher()->generateFastBulk(10000, ['profile' => '1HARI', 'price' => 5000]);\n";
+    echo "🔹 [Hotspot Kick]     \$ros->hotspot()->kickUser('budi');\n";
 }
 
 /*
@@ -136,9 +145,28 @@ if ($ros->isConnected()) {
 
 /*
 |--------------------------------------------------------------------------
-| 6. DATABASE SQL (SQLite & MySQL) & JSON FLAT-FILE
+| 6. ENTERPRISE SERVER INTERFACES & FIREWALL HARDENING
 |--------------------------------------------------------------------------
+| Dioptimalkan untuk Server MikroTik Enterprise (CCR, CRS, CHR, x86).
 */
+echo "\n--- Enterprise Server Interfaces & Security Hardening ---\n";
+echo "🔹 [SFP / SFP+ Fiber]     \$ros->interface()->getSfp();\n";
+echo "🔹 [LACP Bonding 802.3ad] \$ros->interface()->getBonding();\n";
+echo "🔹 [VRRP HA Cluster]      \$ros->interface()->getVrrp();\n";
+echo "🔹 [FastTrack Accelerate] \$ros->firewall()->enableFastTrack();\n";
+echo "🔹 [Brute-Force Guard]    \$ros->firewall()->protectBruteForce([22, 8291, 8728, 8729]);\n";
+echo "🔹 [1-Click Hardening]    \$ros->firewall()->hardenServerBaseline('bridge', 'ether1');\n";
+
+/*
+|--------------------------------------------------------------------------
+| 7. DATABASE SQL (SQLite & MySQL) & JSON FLAT-FILE
+|--------------------------------------------------------------------------
+| Transaksi ACID, chunked batch insert multi-baris, dan indexing O(log N).
+*/
+echo "\n--- Unified Database Engine (SQLite & MySQL) ---\n";
+echo "🔹 [Batch Multi-Row]  \$ros->db()->insertBatch('vouchers', \$vouchersList, 500);\n";
+echo "🔹 [ACID Transaction] \$ros->db()->transaction(function(\$db) { ... });\n";
+echo "🔹 [Database Stats]   print_r(\$ros->db()->stats());\n";
 
 // Flat-File JSON Storage
 $json = $ros->json();

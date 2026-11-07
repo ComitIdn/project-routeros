@@ -15,6 +15,7 @@ class RestTransport implements TransportInterface
     private array $config;
     private ?string $lastError = null;
     private bool $connected = false;
+    private $curlHandle = null;
 
     public function __construct(array $config)
     {
@@ -71,19 +72,27 @@ class RestTransport implements TransportInterface
         return $this->requestStream($method, $url, $data);
     }
 
+    private function getCurlHandle()
+    {
+        if ($this->curlHandle === null) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_USERPWD, $this->config['user'] . ':' . $this->config['pass']);
+            if (!$this->config['verify_ssl']) {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            }
+            $this->curlHandle = $ch;
+        }
+        return $this->curlHandle;
+    }
+
     private function requestCurl(string $method, string $url, array $data = []): array
     {
-        $ch = curl_init();
+        $ch = $this->getCurlHandle();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->config['timeout']);
-        curl_setopt($ch, CURLOPT_USERPWD, $this->config['user'] . ':' . $this->config['pass']);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-
-        if (!$this->config['verify_ssl']) {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        }
 
         $headers = [
             'Accept: application/json',
@@ -94,6 +103,8 @@ class RestTransport implements TransportInterface
             $json = json_encode($data);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
             $headers[] = 'Content-Length: ' . strlen($json);
+        } else {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, '');
         }
 
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -101,9 +112,6 @@ class RestTransport implements TransportInterface
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        if (PHP_VERSION_ID < 80500) {
-            @curl_close($ch);
-        }
 
         if ($response === false || $error) {
             $this->lastError = "REST cURL error: " . ($error ?: 'Connection failed');
@@ -120,6 +128,14 @@ class RestTransport implements TransportInterface
         }
 
         return is_array($decoded) ? $decoded : ['raw' => $response, 'http_code' => $httpCode];
+    }
+
+    public function __destruct()
+    {
+        if ($this->curlHandle !== null && PHP_VERSION_ID < 80500) {
+            @curl_close($this->curlHandle);
+            $this->curlHandle = null;
+        }
     }
 
     private function requestStream(string $method, string $url, array $data = []): array
@@ -179,6 +195,10 @@ class RestTransport implements TransportInterface
     public function disconnect(): void
     {
         $this->connected = false;
+        if ($this->curlHandle !== null && PHP_VERSION_ID < 80500) {
+            @curl_close($this->curlHandle);
+            $this->curlHandle = null;
+        }
     }
 
     public function isConnected(): bool

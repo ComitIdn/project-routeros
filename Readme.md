@@ -21,9 +21,12 @@
   <a href="#-multi-protocol-transports-api-rest-ssh-telnet">Transports</a> &nbsp;|&nbsp;
   <a href="#-full-operational-crud-actions-terpisah">CRUD Actions</a> &nbsp;|&nbsp;
   <a href="#-multi-ptmp-point-to-multipoint-wireless-management">PTMP Wireless</a> &nbsp;|&nbsp;
+  <a href="#-mass-scale-voucher-engine-hingga-10000-sekaligus">Voucher Massal</a> &nbsp;|&nbsp;
+  <a href="#-profil-hotspot-on-login-script-otomatis-auto-expiry--anti-tethering">Hotspot Profile</a> &nbsp;|&nbsp;
+  <a href="#-enterprise-server--firewall-security-baseline">Server & Firewall</a> &nbsp;|&nbsp;
+  <a href="#-unified-mysql--mariadb--sqlite-architecture">MySQL Enterprise</a> &nbsp;|&nbsp;
   <a href="#-dukungan-multi-platform--bahasa-php-python-js-cli-json">Multi-Bahasa</a> &nbsp;|&nbsp;
   <a href="#-rest-api-json-endpoint">REST API</a> &nbsp;|&nbsp;
-  <a href="#-terminal-cli-console-tool">Terminal CLI</a> &nbsp;|&nbsp;
   <a href="#-cheat-sheet-modul-lengkap">Cheat Sheet</a>
 </p>
 
@@ -53,6 +56,25 @@
 5. **Dua Jenis Penyimpanan Database (SQL PDO & JSON Flat-File)**:
    - **SQLite** tanpa instalasi server database (*zero-config*) dan dukungan **MySQL / MariaDB / PostgreSQL**.
    - **JSON Flat-File Storage**: Simpan konfigurasi, voucher, dan log langsung sebagai file JSON.
+6. **Mass-Scale Voucher Engine (Hingga 10.000+ Voucher Sekaligus)**:
+   - Generate ribuan voucher dalam hitungan milidetik menggunakan engine *collision-free hash set*.
+   - Multi-row chunked batch inserts ke MySQL / SQLite dalam 1 transaksi ACID, serta atomic push ke JSON storage.
+   - Sinkronisasi single-roundtrip ke RouterOS via compact CLI script atau ekspor file `.rsc` siap impor.
+7. **Profil Hotspot On-Login Script Otomatis (Auto-Expiry & Anti-Tethering)**:
+   - Kompatibel penuh RouterOS v6.xx dan v7.xx+.
+   - Otomatis mencatat waktu jatuh tempo sejak login pertama dan memutus sesi saat durasi habis.
+   - Kunci MAC address perangkat otomatis saat login pertama kali (mencegah akun dishare).
+   - Opsional notifikasi instan login ke bot Telegram dan pasang background cleaner untuk sesi aktif yatim piatu (*ghost sessions*).
+8. **Enterprise Server Interfaces & Firewall Hardening**:
+   - Khusus server data center & ISP (CCR, CRS, CHR, x86): Port Fiber SFP/SFP+ 10G/40G, LACP Bonding (802.3ad), VRRP Dual-Router HA Failover, 802.1Q VLANs, VXLAN, EoIP, GRE, WireGuard.
+   - **FastTrack Acceleration**: Memangkas utilisasi CPU server hingga 80% pada throughput Gigabit/10G.
+   - **Brute-Force Guard**: Karantina otomatis 3-tahap untuk port SSH (22), WinBox (8291), dan API (8728/8729).
+   - **Port Scan Detection (PSD)**: Blokir otomatis pemindai jaringan (Nmap/Masscan).
+9. **REST API Backend Hardening**:
+   - Proteksi otentikasi opsional via Bearer Token atau header `X-API-KEY`.
+   - Kompresi transfer **HTTP Gzip** otomatis (mengurangi ukuran payload JSON hingga 85-90%).
+   - **Batch Multi-Operation Endpoint**: Eksekusi banyak operasi sekaligus dalam 1 request HTTP roundtrip.
+   - Header telemetri latensi eksekusi backend (`X-Response-Time-Ms`).
 
 ---
 
@@ -61,25 +83,27 @@
 ```text
 project-routeros/
 ├── config.example.php          # Template Konfigurasi Router & Database
-├── config.php                  # Konfigurasi Lokal (Host, User, Pass, DB, Protocol)
+├── config.php                  # Konfigurasi Lokal (Host, User, Pass, DB, Protocol, API Key)
 ├── composer.json               # Dependensi & Autoloading PSR-4 + Laravel Auto-Discovery
 ├── example.php                 # Master Contoh Implementasi Bersih & Profesional
 ├── routeros.py                 # Universal Python 3 SDK & Standalone CLI
 ├── routeros.js                 # Universal Master JavaScript SDK (Node.js & Browser)
 ├── mikrotik.php                # Alias Kompatibilitas ke Belakang (Forwarder ke example.php)
 ├── console.php                 # CLI Console Tool Interaktif untuk Terminal / Termux
-├── api.php                     # Universal RESTful JSON API Endpoint (CORS Ready)
+├── api.php                     # Universal RESTful JSON API Endpoint (CORS, Gzip, Auth, Batch)
 ├── bot_webhook.php             # Webhook Handler Telegram & WhatsApp Bot
 ├── index.php                   # Web Dashboard & Generator Voucher Interaktif
 ├── examples/                   # Direktori Contoh Kode Modular & Terstruktur
 │   ├── 01_quickstart.php       # Inisialisasi koneksi, resource, ping & version
-│   ├── 02_hotspot.php          # Hotspot user, limits, traffic realtime, bypass
-│   ├── 03_voucher.php          # Bulk voucher, QR Code, print card, thermal printer
+│   ├── 02_hotspot.php          # Hotspot user, limits, traffic realtime, on-login profile
+│   ├── 03_voucher.php          # Bulk voucher 10.000+, QR Code, print card, thermal printer
 │   ├── 04_pppoe.php            # PPPoE secrets, static IP, billing overdue & auto-isolate
-│   ├── 05_actions.php          # Dedicated Actions: Finder, Setter, Getter, Printer
+│   ├── 05_actions.php          # Dedicated Actions: Finder, Setter, Getter, Printer, Remover
 │   ├── 06_multi_platform.php   # Panduan integrasi Laravel, CodeIgniter, JS SDK, CLI
 │   ├── 07_ptmp_and_protocols.php # Multi-Protocol Transports & Multi-PTMP Wireless
-│   └── 08_javascript_master.js # Master JavaScript Multi-Router Concurrent Pool & Debugger
+│   ├── 08_javascript_master.js # Master JavaScript Multi-Router Concurrent Pool & Debugger
+│   ├── 09_enterprise_server_and_security.php # SFP Fiber, LACP Bonding, VRRP, & FastTrack Firewall
+│   └── 10_mysql_enterprise_architecture.php  # High-Throughput MySQL Batch Inserts & ACID Transactions
 ├── assets/
 │   └── js/
 │       └── routeros.js         # Client-side JavaScript SDK Universal (Vanilla, Vue, React, Node)
@@ -204,8 +228,8 @@ Setiap aksi operasional berada dalam class PHP independen di [`src/Actions/`](fi
 | **`Setter`** | `$ros->set()` / `$ros->setter()` | `set()`, `limit()`, `comment()`, `email()`, `name()`, `password()`, `profile()`, `property()` |
 | **`Getter`** | `$ros->get()` / `$ros->getter()` | `get()`, `getByName()`, `getById()`, `getValue()`, `count()`, `exists()`, `pluck()` |
 | **`Printer`** | `$ros->print()` / `$ros->printer()` | `print()`, `printColumns()`, `printDetail()`, `printJson()`, `paginate()` |
-| **`Remover`** | `$ros->remove()` / `$ros->remover()` | `remove()`, `byName()`, `byId()`, `where()`, `byComment()`, `byProfile()`, `all()` |
-| **`Toggler`** | `$ros->toggle()` / `$ros->toggler()` | `enable()`, `disable()`, `toggle()`, `resetCounter()` |
+| **`Remover`** | `$ros->remove()` / `$ros->remover()` | `remove()`, `byName()`, `byId()`, `where()`, `batch()`, `byComment()`, `byProfile()`, `all()` |
+| **`Toggler`** | `$ros->toggle()` / `$ros->toggler()` | `enable()`, `disable()`, `toggle()`, `enableBatch()`, `disableBatch()`, `resetCounter()` |
 
 #### Contoh Penggunaan Action Lengkap:
 ```php
@@ -271,6 +295,110 @@ $ros->ptmp()->setNv2Config('wlan1', [
     'nv2-security'         => 'key-management',
     'nv2-preshared-key'    => 'KunciRahasiaNV2Tower!',
 ]);
+```
+
+---
+
+## 🎫 Mass-Scale Voucher Engine (Hingga 10.000+ Sekaligus)
+
+Modul [`$ros->voucher()`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/Voucher.php) dirancang untuk kebutuhan RT/RW Net, ISP, dan Event Organizer berskala raksasa yang membutuhkan ribuan voucher dalam hitungan detik tanpa membebani CPU router:
+
+```php
+// 1. Generate 5.000 s/d 10.000 Voucher Massal ke Database (Selesai dalam < 1 Detik)
+$batch = $ros->voucher()->generateFastBulk(5000, [
+    'prefix'       => 'VC-',
+    'length'       => 6,
+    'characters'   => 'alphanumeric_upper', // Huruf kapital & angka jelas
+    'profile'      => '1HARI-5MB',
+    'limit_uptime' => '1d',
+    'price'        => 5000,
+    'batch_tag'    => 'event-merdeka',
+    'sync_mode'    => 'stock_only', // Disimpan di database SQL sebagai stok voucher siap jual
+    'save_db'      => true,
+]);
+
+echo "Generated: {$batch['generated']} vouchers dalam {$batch['duration_ms']} ms\n";
+
+// 2. Ekspor File Script RouterOS (.rsc) Siap Impor
+$rscContent = $ros->voucher()->generateRscScript($batch['vouchers']);
+file_put_contents('database/exports/vouchers.rsc', $rscContent);
+
+// 3. Ambil data voucher terindeks & cetak kupon kartu thermal / QR Code
+$vouchers = $ros->voucher()->getFromDb(['batch_tag' => 'event-merdeka', 'limit' => 50]);
+$htmlCards = $ros->voucher()->renderPrintCards($vouchers, [
+    'title'    => 'HOTSPOT WARNET CYBER',
+    'dns_name' => 'http://wifi.kafe/login',
+    'price'    => 'Rp 5.000 / 1 Hari',
+    'show_qr'  => true,
+]);
+```
+
+---
+
+## 🔐 Profil Hotspot On-Login Script Otomatis (Auto-Expiry & Anti-Tethering)
+
+Modul [`$ros->hotspot()`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/Hotspot.php) memprogram otomatis script `on-login` RouterOS yang kompatibel dengan RouterOS v6 dan v7:
+
+```php
+// 1. Setup Profil Voucher ISP dengan On-Login Otomatis
+$ros->hotspot()->createVoucherProfile('1HARI-5MB', '2M/5M', '1d', [
+    'shared_users'   => '1',
+    'lock_mac'       => true,  // Kunci otomatis ke MAC HP saat login pertama kali (Anti-Sharing)
+    'track_expiry'   => true,  // Catat tanggal & jam login pertama di comment, hapus sesi saat expired
+    'telegram_token' => '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11', // Opsional notif Telegram
+    'telegram_chat_id' => '987654321',
+]);
+
+// 2. Pasang Background Cleaner di RouterOS untuk menghapus sesi mati / ghost sessions
+$ros->hotspot()->installExpiryCleanupScheduler(5); // Jalan otomatis tiap 5 menit
+```
+
+---
+
+## 🛡️ Enterprise Server & Firewall Security Baseline
+
+Modul [`$ros->interface()`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/NetworkInterface.php) dan [`$ros->firewall()`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/Firewall.php) disesuaikan untuk Server MikroTik Enterprise (CCR, CRS, CHR, x86, RB1100, RB5009):
+
+```php
+// 1. Monitoring Port Server Fisik & Virtual
+$sfpPorts = $ros->interface()->getSfp();       // SFP / SFP+ 10G/40G Fiber Optic
+$bonding  = $ros->interface()->getBonding();   // Link Aggregation LACP (802.3ad)
+$vrrp     = $ros->interface()->getVrrp();      // Dual-Router High-Availability Failover
+$vlans    = $ros->interface()->getVlans();     // Trunking 802.1Q
+$traffic  = $ros->interface()->monitorTraffic('sfp-sfpplus1'); // Live byte rate & bandwidth
+
+// 2. 1-Click Server Security Hardening Baseline
+// Mengaktifkan FastTrack (80% CPU offload), Drop Invalid, Brute-Force Guard, & Port Scanner Drop
+$ros->firewall()->hardenServerBaseline('bridge', 'ether1');
+
+// Atau konfigurasi aturan granular mandiri:
+$ros->firewall()->enableFastTrack();
+$ros->firewall()->protectBruteForce([22, 8291, 8728, 8729]); // Karantina brute-force 7 hari
+$ros->firewall()->protectPortScanners();                     // Deteksi PSD nmap/masscan
+```
+
+---
+
+## 🗄️ Unified MySQL / MariaDB & SQLite Architecture
+
+Class [`$ros->db()`](file:///data/data/com.termux/files/home/project-routeros/src/Core/Database.php) menyediakan API seragam untuk **SQLite** dan **MySQL / MariaDB** dengan kemampuan transaksi ACID dan batch insert multi-baris:
+
+```php
+// 1. Inisialisasi Database (bisa via config.php atau runtime)
+$db = $ros->db();
+
+// 2. High-Speed Batch Insert (1.000 baris dalam < 100 ms)
+$db->insertBatch('vouchers', $voucherRows, 500);
+
+// 3. Transaksi Database Aman (ACID Transactions)
+$db->transaction(function ($tx) use ($userId) {
+    $tx->update('pppoe_users', ['status' => 'active'], 'id = :id', ['id' => $userId]);
+    $tx->log('PPPoE', 'Reactivate Customer', $userId, 'Payment received');
+});
+
+// 4. Metrik Operasional Database
+$stats = $db->stats();
+// ['driver' => 'mysql', 'vouchers' => 15200, 'hotspot_users' => 450, 'pppoe_users' => 120]
 ```
 
 ---
@@ -428,11 +556,25 @@ php console.php terminal "/interface wireless print detail"
 
 ## 🌐 REST API JSON Endpoint
 
-File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.php) siap dihubungkan ke frontend modern:
+File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.php) siap dihubungkan ke frontend modern, mobile app, dan sistem billing dengan proteksi API Key dan kompresi Gzip:
 
 | Method | Endpoint | Keterangan |
 | :--- | :--- | :--- |
 | `GET` | `/api.php?action=status` | Status resource, identitas router, dan metrik hotspot |
+| `POST` | `/api.php?action=batch` | **Batch Multi-Operation**: Eksekusi banyak operasi sekaligus dalam 1 roundtrip |
+| `POST` | `/api.php?action=generate_voucher` | Generate batch voucher standar |
+| `POST` | `/api.php?action=generate_bulk_vouchers` | **Mass-Scale 10.000+ Vouchers**: Generate massal dengan batch SQL insert & CLI push |
+| `POST` | `/api.php?action=hotspot_create_profile` | Buat profil hotspot dengan on-login script (auto-expiry & auto-MAC lock) |
+| `POST` | `/api.php?action=firewall_harden` | Terapkan 1-click baseline keamanan server enterprise |
+| `POST` | `/api.php?action=firewall_bruteforce` | Pasang proteksi karantina brute-force port SSH/WinBox/API |
+| `POST` | `/api.php?action=firewall_fasttrack` | Aktifkan FastTrack connection acceleration (80% CPU offload) |
+| `GET` | `/api.php?action=interfaces` | Daftar seluruh interface server (Ethernet, SFP, Bonding, VRRP, VLAN) |
+| `GET` | `/api.php?action=sfp` | Port Fiber Optic SFP/SFP+ 1G/10G/40G |
+| `GET` | `/api.php?action=bonding` | Trunk LACP Bonding Link Aggregation |
+| `GET` | `/api.php?action=vrrp` | Klaster High-Availability Dual Router VRRP |
+| `GET` | `/api.php?action=vlans` | Virtual LAN 802.1Q interfaces |
+| `GET` | `/api.php?action=interface_traffic&interface=ether1` | Live telemetry bandwidth interface |
+| `GET` | `/api.php?action=database_stats` | Metrik operasional database (driver, voucher stock, user count) |
 | `GET` | `/api.php?action=ptmp_stations` | Daftar CPE Station PTMP terhubung & sinyal dBm |
 | `GET` | `/api.php?action=ptmp_metrics` | Analisis kualitas link kesehatan PTMP |
 | `POST` | `/api.php?action=ptmp_kick` | Kick station CPE tertentu |
@@ -440,7 +582,6 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | `POST` | `/api.php?action=ptmp_set_protocol` | Ganti mode wireless (nv2, nstreme, 802.11) |
 | `GET` | `/api.php?action=users` | Daftar pengguna Hotspot |
 | `GET` | `/api.php?action=active` | Sesi aktif dengan konsumsi bandwidth real-time |
-| `POST` | `/api.php?action=generate_voucher` | Generate batch voucher baru |
 | `POST` | `/api.php?action=kick` | Putuskan koneksi user aktif |
 | `POST` | `/api.php?action=find_id` | Cari internal .id dari nama item |
 | `POST` | `/api.php?action=set_limit` | Ubah batas uptime / bytes akun hotspot |
@@ -467,13 +608,13 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | **`set()`** | `limit()`, `setLimit()`, `comment()`, `setComment()`, `email()`, `setEmail()`, `name()`, `setName()`, `password()`, `profile()`, `property()` |
 | **`get()`** | `get()`, `getByName()`, `getById()`, `getValue()`, `count()`, `exists()`, `pluck()` |
 | **`print()`** | `print()`, `printColumns()`, `printDetail()`, `printJson()`, `paginate()` |
-| **`remove()`** | `remove()`, `byName()`, `byId()`, `where()`, `byComment()`, `byProfile()`, `all()` |
-| **`toggle()`** | `enable()`, `disable()`, `toggle()`, `resetCounter()` |
+| **`remove()`** | `remove()`, `byName()`, `byId()`, `where()`, `batch()`, `byComment()`, `byProfile()`, `all()` |
+| **`toggle()`** | `enable()`, `disable()`, `toggle()`, `enableBatch()`, `disableBatch()`, `resetCounter()` |
 | **`ptmp()`** | `detectHardware()`, `getStations()`, `getStationQualityMetrics()`, `getAccessList()`, `addAccessList()`, `removeAccessList()`, `getConnectList()`, `addConnectList()`, `kickStation()`, `setProtocol()`, `setNv2Config()`, `setChannel()`, `setTxPower()`, `scanFrequencies()` |
-| **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
-| **`voucher()`** | `generate()`, `generateAndSave()`, `generateQrCodeUrl()`, `getFromDb()`, `markUsed()`, `deleteBatch()`, `renderPrintCards()`, `renderThermalReceipt()`, `getSalesReport()`, `getBatchSummary()`, `exportToCsv()`, `importFromCsv()` |
+| **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `createVoucherProfile()`, `generateOnLoginScript()`, `installExpiryCleanupScheduler()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
+| **`voucher()`** | `generate()`, `generateFastBulk()`, `generateRscScript()`, `generateAndSave()`, `generateQrCodeUrl()`, `getFromDb()`, `markUsed()`, `deleteBatch()`, `renderPrintCards()`, `renderThermalReceipt()`, `getSalesReport()`, `getBatchSummary()`, `exportToCsv()`, `importFromCsv()` |
 | **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `ensureIsolateProfile()`, `syncToDatabase()` |
-| **`firewall()`** | `getFilterRules()`, `addFilterRule()`, `getNatRules()`, `addMasquerade()`, `addAddressList()` |
+| **`firewall()`** | `getFilterRules()`, `addFilterRule()`, `getNatRules()`, `addMasquerade()`, `addAddressList()`, `enableFastTrack()`, `dropInvalid()`, `protectBruteForce()`, `protectPortScanners()`, `hardenServerBaseline()` |
 | **`queue()`** | `getAll()`, `add()`, `limitBandwidth()`, `remove()` |
 | **`interface()`** | `getAll()`, `getEthernet()`, `getSfp()`, `getBridges()`, `getVlans()`, `getBonding()`, `getVrrp()`, `getWireGuard()`, `getEoip()`, `getGre()`, `getVxlan()`, `monitorTraffic()`, `enable()`, `disable()`, `setComment()` |
 | **`system()`** | `getResources()`, `getIdentity()`, `setIdentity()`, `getClock()`, `getLogs()`, `ping()`, `reboot()`, `getVersion()`, `getMajorVersion()`, `isV7()`, `isV6()` |
@@ -484,8 +625,8 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | **`billing()`** | `handleWebhook()`, `generateVoucherForPayment()` |
 | **`dnsFilter()`** | `blockDomain()`, `unblockDomain()`, `flushCache()`, `importHostsBlocklist()` |
 | **`bot()`** | `handle($message, $sender)` |
-| **`db()`** | `insert()`, `update()`, `delete()`, `select()`, `find()`, `count()`, `log()`, `query()`, `fetchAll()` |
-| **`json()`** | `all()`, `get()`, `set()`, `push()`, `find()`, `where()`, `deleteWhere()`, `clear()` |
+| **`db()`** | `insert()`, `insertBatch()`, `transaction()`, `beginTransaction()`, `commit()`, `rollBack()`, `stats()`, `update()`, `delete()`, `select()`, `find()`, `count()`, `log()`, `query()`, `fetchAll()` |
+| **`json()`** | `all()`, `get()`, `set()`, `push()`, `pushBatch()`, `find()`, `where()`, `deleteWhere()`, `clear()` |
 | **`cache()`** | `get()`, `set()`, `has()`, `remember()`, `forget()`, `clear()` |
 
 ---

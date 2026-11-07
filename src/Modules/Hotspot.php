@@ -661,6 +661,135 @@ class Hotspot
     }
 
     /**
+     * Generate rock-solid on-login script for Hotspot user profile.
+     * Handles automatic expiry tracking from first login, MAC lock, and optional Telegram alert.
+     * Compatible with both RouterOS v6.xx and v7.xx+.
+     *
+     * @param string $validity Duration string e.g. '1h', '3h', '1d', '7d', '30d'
+     * @param array $options [
+     *    'lock_mac'         => true,
+     *    'track_expiry'     => true,
+     *    'telegram_token'   => string,
+     *    'telegram_chat_id' => string,
+     *    'custom_script'    => string,
+     * ]
+     * @return string
+     */
+    public function generateOnLoginScript(string $validity = '1d', array $options = []): string
+    {
+        $lockMac = $options['lock_mac'] ?? true;
+        $trackExpiry = $options['track_expiry'] ?? true;
+        $tgToken = $options['telegram_token'] ?? '';
+        $tgChat = $options['telegram_chat_id'] ?? '';
+        $custom = $options['custom_script'] ?? '';
+
+        $script = [];
+        $script[] = '# Project RouterOS Automated Hotspot On-Login Script';
+        $script[] = ':local uName "$user";';
+        $script[] = ':local uMac $"mac-address";';
+        $script[] = ':local uIp "$address";';
+
+        // 1. MAC Binding: Lock voucher to the first logged-in device
+        if ($lockMac) {
+            $script[] = ':if ([/ip hotspot user get [find name=$uName] mac-address] = "") do={';
+            $script[] = '    /ip hotspot user set [find name=$uName] mac-address=$uMac;';
+            $script[] = '}';
+        }
+
+        // 2. Expiry Tracking & Auto-Termination Scheduler
+        if ($trackExpiry && !empty($validity)) {
+            $script[] = ':local uComm [/ip hotspot user get [find name=$uName] comment];';
+            $script[] = ':if ([:find $uComm "exp:"] = nil) do={';
+            $script[] = '    :local cDate [/system clock get date];';
+            $script[] = '    :local cTime [/system clock get time];';
+            $script[] = '    /ip hotspot user set [find name=$uName] comment=("$uComm exp:" . $cDate . " " . $cTime);';
+            $cleanOnEvent = '/ip hotspot active remove [find user=\"$uName\"]; /ip hotspot user remove [find name=\"$uName\"]; /system scheduler remove [find name=\"$uName\"];';
+            $script[] = '    /system scheduler add name=$uName start-date=$cDate start-time=$cTime interval="' . $validity . '" on-event="' . $cleanOnEvent . '" comment="Auto Expire ' . $validity . '";';
+            $script[] = '}';
+        }
+
+        // 3. Telegram notification
+        if (!empty($tgToken) && !empty($tgChat)) {
+            $tgMsg = "User+$user+Online+IP+$address+MAC+$uMac";
+            $script[] = '/tool fetch url="https://api.telegram.org/bot' . $tgToken . '/sendMessage?chat_id=' . $tgChat . '&text=' . $tgMsg . '" keep-result=no;';
+        }
+
+        // 4. Custom scripting hook
+        if (!empty($custom)) {
+            $script[] = trim($custom);
+        }
+
+        return implode("\n", $script);
+    }
+
+    /**
+     * Create or update a complete, ISP-grade Voucher User Profile with automatic on-login expiry logic.
+     *
+     * @param string $name Profile name (e.g. '1JAM-2MB', '1HARI-5MB')
+     * @param string $rateLimit Bandwidth limit e.g. '2M/5M' or '1024k/2048k'
+     * @param string $validity Uptime or absolute validity e.g. '1h', '3h', '1d', '30d'
+     * @param array $options Extra parameters ('shared_users', 'lock_mac', 'telegram_token', etc.)
+     * @return array
+     */
+    public function createVoucherProfile(
+        string $name,
+        string $rateLimit,
+        string $validity = '1d',
+        array $options = []
+    ): array {
+        $onLogin = $this->generateOnLoginScript($validity, $options);
+
+        $params = [
+            'name'                => $name,
+            'rate-limit'          => $rateLimit,
+            'shared-users'        => (string)($options['shared_users'] ?? '1'),
+            'status-autorefresh'  => '1m',
+            'transparent-proxy'   => 'no',
+            'on-login'            => $onLogin,
+        ];
+
+        if (!empty($options['address_pool'])) {
+            $params['address-pool'] = $options['address_pool'];
+        }
+
+        $existing = $this->conn->read('/ip/hotspot/user/profile/print', ['name' => $name]);
+        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
+            $id = $existing[0]['.id'] ?? $name;
+            return $this->conn->set('/ip/hotspot/user/profile/set', $id, $params);
+        }
+
+        return $this->conn->write('/ip/hotspot/user/profile/add', $params);
+    }
+
+    /**
+     * Install background scheduler in RouterOS to clean up orphaned active sessions and dead cookies.
+     *
+     * @param int $intervalMinutes Check interval in minutes (default 5m)
+     * @return array
+     */
+    public function installExpiryCleanupScheduler(int $intervalMinutes = 5): array
+    {
+        $schedName = 'project-ros-cleaner';
+        $existing = $this->conn->read('/system/scheduler/print', ['name' => $schedName]);
+
+        $onEvent = ':foreach i in=[/ip hotspot active find] do={:local u [/ip hotspot active get $i user]; :if ([/ip hotspot user find name=$u] = nil) do={/ip hotspot active remove $i;}};';
+
+        $params = [
+            'name'      => $schedName,
+            'interval'  => "{$intervalMinutes}m",
+            'on-event'  => $onEvent,
+            'comment'   => 'Project RouterOS Automated Ghost Session Cleanup',
+        ];
+
+        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
+            $id = $existing[0]['.id'] ?? $schedName;
+            return $this->conn->set('/system/scheduler/set', $id, $params);
+        }
+
+        return $this->conn->write('/system/scheduler/add', $params);
+    }
+
+    /**
      * =========================================================================
      * --- HOTSPOT SERVERS & SERVER PROFILES ---
      * =========================================================================

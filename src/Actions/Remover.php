@@ -75,7 +75,53 @@ class Remover
     }
 
     /**
+     * Remove multiple items in high-speed batches using comma-separated IDs.
+     * Dramatically reduces socket overhead when purging large numbers of records.
+     *
+     * @param string $path
+     * @param array $idsOrNames
+     * @param int $chunkSize
+     * @return array
+     */
+    public function batch(string $path, array $idsOrNames, int $chunkSize = 50): array
+    {
+        $removePath = $this->normalizeRemovePath($path);
+        $totalRemoved = 0;
+        $errors = [];
+
+        $ids = [];
+        foreach ($idsOrNames as $item) {
+            if (empty($item)) continue;
+            $id = str_starts_with($item, '*') ? $item : ($this->finder->nameToId($item, $path) ?? $item);
+            if (!empty($id)) {
+                $ids[] = $id;
+            }
+        }
+
+        if (empty($ids)) {
+            return ['requested' => count($idsOrNames), 'removed' => 0, 'errors' => []];
+        }
+
+        foreach (array_chunk($ids, max(1, $chunkSize)) as $chunk) {
+            $batchParam = implode(',', $chunk);
+            $res = $this->conn->remove($removePath, $batchParam);
+            if (isset($res['error'])) {
+                $errors[] = ['chunk' => $chunk, 'error' => $res['error']];
+            } else {
+                $totalRemoved += count($chunk);
+            }
+        }
+
+        return [
+            'requested' => count($idsOrNames),
+            'removed'   => $totalRemoved,
+            'errors'    => $errors,
+        ];
+    }
+
+    /**
      * Remove all items matching criteria.
+     * Optimized to purge in batches rather than individual roundtrips.
      *
      * @param string $path
      * @param array $criteria
@@ -84,25 +130,22 @@ class Remover
     public function where(string $path, array $criteria): array
     {
         $items = $this->finder->where($path, $criteria);
-        $removed = 0;
-        $errors = [];
+        $ids = array_filter(array_column($items, '.id'));
 
-        foreach ($items as $item) {
-            $id = $item['.id'] ?? null;
-            if ($id) {
-                $res = $this->byId($id, $path);
-                if (isset($res['error'])) {
-                    $errors[] = ['id' => $id, 'error' => $res['error']];
-                } else {
-                    $removed++;
-                }
-            }
+        if (empty($ids)) {
+            return [
+                'total_found' => 0,
+                'removed'     => 0,
+                'errors'      => [],
+            ];
         }
+
+        $batchRes = $this->batch($path, $ids);
 
         return [
             'total_found' => count($items),
-            'removed'     => $removed,
-            'errors'      => $errors,
+            'removed'     => $batchRes['removed'],
+            'errors'      => $batchRes['errors'],
         ];
     }
 
