@@ -229,12 +229,58 @@ switch ($command) {
         break;
 
     case 'mikhmon:hotspot':
-        $profile = $args[1] ?? '1JAM-2MB';
-        $rate = $args[2] ?? '2M/5M';
-        $validity = $args[3] ?? '1d';
-        $price = (float)($args[4] ?? 5000);
-        $res = $ros->hotspot()->setupMikhmonProfile($profile, $rate, $validity, $price, 'remove');
-        echo !isset($res['error']) ? "✨ Mikhmon Hotspot profile '{$profile}' ({$rate}, {$validity}, Rp{$price}) & Auto-Cleaner berhasil dipasang!\n" : "❌ Gagal: " . json_encode($res) . "\n";
+        $profile = $args[1] ?? 'V24h';
+        $rate = $args[2] ?? '3M/2M';
+        $validity = $args[3] ?? '24h';
+        $price = (float)($args[4] ?? 8000);
+        $sPrice = isset($args[5]) ? (float)$args[5] : 10000;
+        $mode = $args[6] ?? 'remc';
+        $lock = $args[7] ?? 'Disable';
+        $pool = $args[8] ?? 'none';
+        $queue = $args[9] ?? 'none';
+        $shared = $args[10] ?? '1';
+
+        $res = $ros->hotspot()->setupMikhmonProfile(
+            $profile,
+            $rate,
+            $validity,
+            $price,
+            $sPrice,
+            $mode,
+            $lock,
+            $queue,
+            $pool,
+            $shared
+        );
+
+        echo "✨ Mikhmon Hotspot Profile Configured:\n";
+        echo "   Name         : {$profile}\n";
+        echo "   Rate Limit   : {$rate}\n";
+        echo "   Validity     : {$validity}\n";
+        echo "   Price        : Rp " . number_format($price, 0, ',', '.') . "\n";
+        echo "   Selling Price: Rp " . number_format($sPrice, 0, ',', '.') . "\n";
+        echo "   Mode         : {$mode}\n";
+        echo "   Lock User    : {$lock}\n";
+        echo "   Parent Queue : {$queue}\n";
+        echo "   Address Pool : {$pool}\n";
+        echo "   Shared Users : {$shared}\n";
+        echo "   RouterOS Res : " . json_encode($res['result'] ?? $res) . "\n";
+        break;
+
+    case 'mikhmon:pools':
+        $pools = $ros->hotspot()->getPoolList();
+        echo "📋 Available IP Pools on RouterOS:\n";
+        foreach ($pools as $idx => $p) {
+            echo "   [{$idx}] {$p}\n";
+        }
+        break;
+
+    case 'mikhmon:queues':
+        $queues = $ros->hotspot()->getParentQueueList();
+        echo "📋 Available Parent Simple Queues on RouterOS:\n";
+        foreach ($queues as $idx => $q) {
+            echo "   [{$idx}] {$q}\n";
+        }
         break;
 
     case 'mikhmon:pppoe':

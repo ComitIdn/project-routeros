@@ -341,6 +341,41 @@ class HotspotModule:
     def set_comment(self, username: str, comment: str) -> Any:
         return self.ros.set("/ip/hotspot/user", username, {"comment": comment})
 
+    def setup_mikhmon_profile(self, name: str, rate_limit: str = "3M/2M", validity: str = "24h", price: int = 8000, options: Optional[Dict[str, Any]] = None) -> Any:
+        opts = options or {}
+        sprice = opts.get("selling_price", 10000)
+        mode = opts.get("expiry_mode", "remc")
+        lock = opts.get("lock_user", "Disable")
+        queue = opts.get("parent_queue", "none")
+        pool = opts.get("address_pool", "none")
+        shared = str(opts.get("shared_users", "1"))
+        mode_char = "N" if "n" in mode.lower() else "R"
+        session_id = opts.get("session_id", random.randint(1000000, 9999999))
+        val_days = int(validity[:-1]) if validity.endswith("d") and validity[:-1].isdigit() else 0
+        source = "$month$year" if val_days >= 30 else "$date"
+
+        on_login = (
+            f':put (",{mode},{price},{validity},{sprice},,{lock},,mikhmon,{session_id},"); :local mode "{mode_char}"; '
+            '{:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; '
+            ':local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; '
+            ':local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; '
+            f':local validity "{validity}";  :local date [ /system clock get date ]; if ([:pick $date 4 5] = "-" and [:pick $date 7 8] = "-" ) do={{:set date [$convert date=$date];}} else={{:set date $date;}};  :local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];  :local time [ /system clock get time ]; :local comment [/ip hotspot user get $user comment]; :local ucode [:pic $comment 0 2]; '
+            ':if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; '
+            ':if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; '
+            ':if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; '
+            f'/ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-{price}-|-$address-|-$mac-|-{validity}-|-{name}-|-$comment" owner="$month$year" source="{source}" comment="mikhmon"}}}}'
+        )
+
+        params = {
+            "name": name,
+            "parent-queue": queue,
+            "shared-users": shared,
+            "rate-limit": rate_limit,
+            "address-pool": pool,
+            "on-login": on_login,
+        }
+        return self.ros.create("/ip/hotspot/user/profile", params)
+
 
 class VoucherModule:
     """Voucher Generator Sub-module."""

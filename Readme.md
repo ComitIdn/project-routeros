@@ -464,20 +464,44 @@ Konfigurasi statis juga dapat langsung disetel di [`config.php`](file:///data/da
 Dukungan 100% kompatibel dengan alur kerja **Mikhmon Online Official** untuk manajemen billing ISP RT/RW Net:
 
 ### 1. Mikhmon Hotspot User Profile & On-Login Script
-Menciptakan profil voucher dengan script `on-login` cerdas yang mencatat jam login pertama (`exp: date time`), mengunci MAC address perangkat (*anti-tethering*), dan scheduler penghapus sesi yatim piatu:
+Menciptakan profil voucher dengan script `on-login` resmi Mikhmon yang mencatat jam login pertama (`exp: date time`), sistem kalender otomatis (kabisat & pergantian tahun), penguncian MAC address (*anti-tethering*), dan pencatatan riwayat penjualan di `/system script`:
 
 ```php
+// Contoh 1: Profil "V24h" (24 Jam, 3M/2M, Beli Rp 8.000, Jual Rp 10.000, Mode remc / R)
 $ros->hotspot()->setupMikhmonProfile(
-    '1JAM-2MB',  // Nama profil
-    '1M/2M',     // Limit bandwidth
-    '1h',        // Validitas masa aktif voucher
-    3000,        // Harga voucher (Rp 3.000)
-    'remove',    // Mode kedaluwarsa: 'remove', 'notice', atau 'remove_record'
-    [
-        'shared_users' => '1',
-        'lock_mac'     => true,
-    ]
+    'V24h',       // Nama profil
+    '3M/2M',      // Rate limit (rx/tx)
+    '24h',        // Masa aktif
+    8000,         // Harga modal (Rp 8.000)
+    10000,        // Harga jual (Rp 10.000)
+    'remc',       // Mode expired: 'remc' (Remove & Record), 'ntfc' (Notice), 'rem', 'ntf'
+    'Disable',    // Lock user device MAC ('Disable' atau 'Enable')
+    'none',       // Parent queue ('none' atau nama simple queue)
+    'none',       // Address pool ('none' atau nama pool dari /ip pool print)
+    '1'           // Shared users
 );
+
+// Contoh 2: Profil "V30D" (30 Hari Bulanan, 3M/2M, Rp 0 / Rp 150.000, Mode ntfc / N)
+$ros->hotspot()->setupMikhmonProfile(
+    'V30D',
+    '3M/2M',
+    '30d',
+    0,
+    150000,
+    'ntfc',
+    'Disable',
+    'none',
+    'none',
+    '1'
+);
+
+// Pilihan Pool & Queue untuk Dropdown UI:
+$pools = $ros->hotspot()->getPoolList();           // ['none', 'hs-pool-1', 'dhcp-pool-lan']
+$queues = $ros->hotspot()->getParentQueueList();   // ['none', 'Total-Hotspot-50M']
+
+// Dapatkan command teks MikroTik CLI siap copy-paste:
+$cliCommand = $ros->hotspot()->generateMikhmonProfileCliCommand('V24h', '3M/2M', '24h', 8000, 10000);
+// Output: /ip hotspot user-profile add name="V24h" parent-queue="none" shared-users="1" rate-limit="3M/2M" address-pool="none" on-login=":put (\",remc,8000,24h,10000,,Disable,,mikhmon,...\"); ..."
 ```
 
 ### 2. Mikhmon PPPoE Isolir Profile, NAT Redirect & Auto-Isolir Scheduler

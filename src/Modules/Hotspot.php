@@ -736,32 +736,248 @@ class Hotspot
     }
 
     /**
-     * Setup Mikhmon-style official Hotspot profile with complete on-login script & auto scheduler.
+     * Get list of IP Pool names available on the router (formatted for dropdowns/selectors).
      *
-     * @param string $name Profile name (e.g. '1JAM-2MB', '1HARI-5MB')
-     * @param string $rateLimit e.g. '1M/2M'
-     * @param string $validity e.g. '1h', '3h', '1d', '30d'
-     * @param int|float $price Voucher price
-     * @param string $expiryMode 'remove', 'notice', 'remove_record'
+     * @return array List of pool names, starting with 'none'
+     */
+    public function getPoolList(): array
+    {
+        $pools = $this->conn->read('/ip/pool/print');
+        $list = ['none'];
+        if (is_array($pools) && !isset($pools['error'])) {
+            foreach ($pools as $p) {
+                if (!empty($p['name'])) {
+                    $list[] = $p['name'];
+                }
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * Get list of Parent Simple Queues available on the router (formatted for dropdowns/selectors).
+     *
+     * @return array List of queue names, starting with 'none'
+     */
+    public function getParentQueueList(): array
+    {
+        $queues = $this->conn->read('/queue/simple/print');
+        $list = ['none'];
+        if (is_array($queues) && !isset($queues['error'])) {
+            foreach ($queues as $q) {
+                if (!empty($q['name'])) {
+                    $list[] = $q['name'];
+                }
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * Generate 100% authentic Mikhmon Official On-Login Script for Hotspot User Profile.
+     * Matches Mikhmon Official v3 / v4 script generator character-by-character.
+     *
+     * @param string $name Profile name (e.g. 'V24h', 'V30D')
+     * @param string $validity Validity string (e.g. '24h', '30d', '1d', '3h')
+     * @param int|float $price Base / purchase price (e.g. 8000)
+     * @param int|float|null $sellingPrice Selling price to customer (e.g. 10000)
+     * @param string $expiryMode 'remc' (Remove & Record), 'ntfc' (Notice & Record), 'rem', 'ntf'
+     * @param string $lockUser 'Disable' or 'Enable'
+     * @param array $options Extra parameters ('grace_period', 'session_id', 'source')
+     * @return string
+     */
+    public function generateMikhmonOfficialOnLoginScript(
+        string $name,
+        string $validity = '24h',
+        $price = 0,
+        $sellingPrice = null,
+        string $expiryMode = 'remc',
+        string $lockUser = 'Disable',
+        array $options = []
+    ): string {
+        $price = (int)$price;
+        $sPrice = $sellingPrice !== null ? (int)$sellingPrice : $price;
+
+        $expMode = strtolower($expiryMode);
+        if ($expMode === 'remove_record' || $expMode === 'remc') {
+            $expModeTag = 'remc';
+            $modeChar = 'R';
+        } elseif ($expMode === 'notice_record' || $expMode === 'ntfc') {
+            $expModeTag = 'ntfc';
+            $modeChar = 'N';
+        } elseif ($expMode === 'remove' || $expMode === 'rem') {
+            $expModeTag = 'rem';
+            $modeChar = 'R';
+        } elseif ($expMode === 'notice' || $expMode === 'ntf') {
+            $expModeTag = 'ntf';
+            $modeChar = 'N';
+        } else {
+            $expModeTag = $expMode ?: 'remc';
+            $modeChar = str_contains($expModeTag, 'n') ? 'N' : 'R';
+        }
+
+        $lock = ucfirst(strtolower($lockUser));
+        if ($lock !== 'Enable' && $lock !== 'Disable') {
+            $lock = (!empty($lockUser) && $lockUser !== 'false' && $lockUser !== '0') ? 'Enable' : 'Disable';
+        }
+
+        $grace = $options['grace_period'] ?? '';
+        $sessionId = $options['session_id'] ?? rand(1000000, 9999999);
+        $scriptSource = $options['source'] ?? (str_ends_with($validity, 'd') && (int)$validity >= 30 ? '$month$year' : '$date');
+
+        return ':put (",' . $expModeTag . ',' . $price . ',' . $validity . ',' . $sPrice . ',' . $grace . ',' . $lock . ',,mikhmon,' . $sessionId . ',"); :local mode "' . $modeChar . '"; {:local itv do={:local getITV [:pic  $v 0 ([ :len $v ] - 1)]; :return $getITV;}; :local ndays do={:local mdays  {31;28;31;30;31;30;31;31;30;31;30;31}; :local months {"jan"=1;"feb"=2;"mar"=3;"apr"=4;"may"=5;"jun"=6;"jul"=7;"aug"=8;"sep"=9;"oct"=10;"nov"=11;"dec"=12}; :local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"}; :local dd  [:tonum [:pick $date 4 6]]; :local yy [:tonum [:pick $date 7 11]]; :local month [:pick $date 0 3]; :local mm (:$months->$month); :set dd ($dd+$days); :local dm [:pick $mdays ($mm-1)]; :if ($mm=2 && (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 }; :while ($dd>$dm) do={  :set dd ($dd-$dm);  :set mm ($mm+1);  :if ($mm>12) do={    :set mm 1;    :set yy ($yy+1);  }; :set dm [:pick $mdays ($mm-1)]; :if ($mm=2 &&  (($yy&3=0 && ($yy/100*100 != $yy)) || $yy/400*400=$yy) ) do={ :set dm 29 };}; :local res "$[:pick $monthr ($mm-1)]/"; :if ($dd<10) do={ :set res ($res."0") }; :set $res "$res$dd/$yy"; :return $res;}; :local convert do={:local monthr  {"jan";"feb";"mar";"apr";"may";"jun";"jul";"aug";"sep";"oct";"nov";"dec"};:local dd [:pick $date 8 11];:local yy [:tonum [:pick $date 0 4]];:local mm [:tonum [:pick $date 5 7]];:local mmm "$[:pick $monthr ($mm-1)]";:local newdate "$mmm/$dd/$yy";:return $newdate;}; :local validity "' . $validity . '";  :local date [ /system clock get date ]; if ([:pick $date 4 5] = "-" and [:pick $date 7 8] = "-" ) do={:set date [$convert date=$date];} else={:set date $date;};  :local year [ :pick $date 7 11 ];:local month [ :pick $date 0 3 ];  :local time [ /system clock get time ]; :local comment [/ip hotspot user get $user comment]; :local ucode [:pic $comment 0 2]; :if ($ucode = "vc" or $ucode = "up" or $comment = "") do={ :local days ""; :local ndate ""; :local ctime ""; :local getDT [:pic  $validity ([ :len $validity ] - 1) [ :len $validity ]]; :if ($getDT= "d") do={    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $time;}; :if ($getDT = "h" or $getDT = "m") do={    :local curt ([/system clock get time]+$validity);    :if ([:len $curt] > 8) do={    :set validity [:pic  $curt 0 ([ :len $curt ] - 8) ];    :set curt [:pic  $curt [ :len $validity ] [ :len $curt ] ];    :set days [$itv v=$validity];    :set ndate [$ndays date=$date days=$days ];    :set ctime $curt;    } else={    :set days 0;    :set ndate $date;    :set ctime $curt;    }}; /ip hotspot user set $user comment="$ndate $ctime $mode"; ; :local mac $"mac-address"; :local time [/system clock get time ]; /system script add name="$date-|-$time-|-$user-|-' . $price . '-|-$address-|-$mac-|-' . $validity . '-|-' . $name . '-|-$comment" owner="$month$year" source="' . $scriptSource . '" comment="mikhmon"}}';
+    }
+
+    /**
+     * Generate raw MikroTik CLI command for creating the exact Mikhmon user profile.
+     *
+     * @param string $name
+     * @param string $rateLimit
+     * @param string $validity
+     * @param int|float $price
+     * @param int|float|null $sellingPrice
+     * @param string $expiryMode
+     * @param string $lockUser
+     * @param string $parentQueue
+     * @param string $addressPool
+     * @param string $sharedUsers
      * @param array $options
+     * @return string
+     */
+    public function generateMikhmonProfileCliCommand(
+        string $name,
+        string $rateLimit = '3M/2M',
+        string $validity = '24h',
+        $price = 0,
+        $sellingPrice = null,
+        string $expiryMode = 'remc',
+        string $lockUser = 'Disable',
+        string $parentQueue = 'none',
+        string $addressPool = 'none',
+        string $sharedUsers = '1',
+        array $options = []
+    ): string {
+        $onLogin = $this->generateMikhmonOfficialOnLoginScript(
+            $name,
+            $validity,
+            $price,
+            $sellingPrice,
+            $expiryMode,
+            $lockUser,
+            $options
+        );
+
+        $pool = (!empty($addressPool) && $addressPool !== 'none') ? $addressPool : 'none';
+        $pQueue = (!empty($parentQueue) && $parentQueue !== 'none') ? $parentQueue : 'none';
+        $escapedOnLogin = str_replace('"', '\"', $onLogin);
+
+        return "/ip hotspot user-profile add name=\"{$name}\" parent-queue=\"{$pQueue}\" shared-users=\"{$sharedUsers}\" rate-limit=\"{$rateLimit}\" address-pool=\"{$pool}\" on-login=\"{$escapedOnLogin}\"";
+    }
+
+    /**
+     * Setup 100% authentic Mikhmon Official Hotspot user profile in RouterOS.
+     * Compatible with Mikhmon v3/v4 official scripts, parent queues, and address pool dropdowns.
+     *
+     * @param string $name Profile name (e.g. 'V24h', 'V30D')
+     * @param string $rateLimit Bandwidth limit (e.g. '3M/2M', '2M/5M')
+     * @param string $validity Validity string (e.g. '24h', '30d', '1d', '3h')
+     * @param int|float $price Base / purchase price
+     * @param mixed $sellingPriceOrExpiryMode Selling price to consumer OR expiryMode (for backward compatibility)
+     * @param mixed $expiryModeOrOptions 'remc'|'ntfc'|'rem'|'ntf' OR options array
+     * @param string $lockUser 'Disable' or 'Enable'
+     * @param string $parentQueue 'none' or simple queue name
+     * @param string $addressPool 'none' or pool name (e.g. from /ip pool print)
+     * @param string $sharedUsers Shared users count (default '1')
+     * @param array $options Extra parameters ('grace_period', 'session_id', 'source', 'install_cleaner')
      * @return array
      */
     public function setupMikhmonProfile(
         string $name,
         string $rateLimit,
-        string $validity = '1d',
+        string $validity = '24h',
         $price = 0,
-        string $expiryMode = 'remove',
+        $sellingPriceOrExpiryMode = null,
+        $expiryModeOrOptions = 'remc',
+        string $lockUser = 'Disable',
+        string $parentQueue = 'none',
+        string $addressPool = 'none',
+        string $sharedUsers = '1',
         array $options = []
     ): array {
-        $options['price'] = $price;
-        $options['expiry_mode'] = $expiryMode;
-        $res = $this->createVoucherProfile($name, $rateLimit, $validity, $options);
+        // Handle backward-compatible calling conventions:
+        if (is_string($sellingPriceOrExpiryMode) && (is_array($expiryModeOrOptions) || $expiryModeOrOptions === 'remc')) {
+            $options = is_array($expiryModeOrOptions) ? $expiryModeOrOptions : [];
+            $expiryMode = $sellingPriceOrExpiryMode;
+            $sellingPrice = $options['selling_price'] ?? $price;
+            $lockUser = $options['lock_user'] ?? ($options['lock_mac'] ?? 'Disable');
+            $parentQueue = $options['parent_queue'] ?? 'none';
+            $addressPool = $options['address_pool'] ?? 'none';
+            $sharedUsers = (string)($options['shared_users'] ?? '1');
+        } elseif (is_array($sellingPriceOrExpiryMode)) {
+            $options = $sellingPriceOrExpiryMode;
+            $sellingPrice = $options['selling_price'] ?? $price;
+            $expiryMode = $options['expiry_mode'] ?? 'remc';
+            $lockUser = $options['lock_user'] ?? 'Disable';
+            $parentQueue = $options['parent_queue'] ?? 'none';
+            $addressPool = $options['address_pool'] ?? 'none';
+            $sharedUsers = (string)($options['shared_users'] ?? '1');
+        } else {
+            $sellingPrice = $sellingPriceOrExpiryMode !== null ? $sellingPriceOrExpiryMode : $price;
+            $expiryMode = is_string($expiryModeOrOptions) ? $expiryModeOrOptions : 'remc';
+            if (isset($options['parent_queue'])) $parentQueue = $options['parent_queue'];
+            if (isset($options['address_pool'])) $addressPool = $options['address_pool'];
+            if (isset($options['lock_user'])) $lockUser = $options['lock_user'];
+            if (isset($options['shared_users'])) $sharedUsers = (string)$options['shared_users'];
+        }
 
-        // Also ensure background ghost session cleaner scheduler is installed
-        $this->installExpiryCleanupScheduler(5);
+        $onLogin = $this->generateMikhmonOfficialOnLoginScript(
+            $name,
+            $validity,
+            $price,
+            $sellingPrice,
+            $expiryMode,
+            $lockUser,
+            $options
+        );
 
-        return $res;
+        $params = [
+            'name'                => $name,
+            'rate-limit'          => $rateLimit,
+            'shared-users'        => (string)$sharedUsers,
+            'parent-queue'        => (!empty($parentQueue) && $parentQueue !== 'none') ? $parentQueue : 'none',
+            'address-pool'        => (!empty($addressPool) && $addressPool !== 'none') ? $addressPool : 'none',
+            'status-autorefresh'  => '1m',
+            'transparent-proxy'   => 'no',
+            'on-login'            => $onLogin,
+        ];
+
+        $existing = $this->conn->read('/ip/hotspot/user/profile/print', ['name' => $name]);
+        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
+            $id = $existing[0]['.id'] ?? $name;
+            $res = $this->conn->set('/ip/hotspot/user/profile/set', $id, $params);
+        } else {
+            $res = $this->conn->write('/ip/hotspot/user/profile/add', $params);
+        }
+
+        $installCleaner = $options['install_cleaner'] ?? true;
+        if ($installCleaner) {
+            $this->installExpiryCleanupScheduler(5);
+        }
+
+        return [
+            'status'        => !isset($res['error']) ? 'success' : 'error',
+            'profile'       => $name,
+            'rate_limit'    => $rateLimit,
+            'validity'      => $validity,
+            'price'         => (int)$price,
+            'selling_price' => (int)$sellingPrice,
+            'expiry_mode'   => $expiryMode,
+            'lock_user'     => $lockUser,
+            'parent_queue'  => $params['parent-queue'],
+            'address_pool'  => $params['address-pool'],
+            'shared_users'  => $params['shared-users'],
+            'result'        => $res,
+        ];
     }
 
     /**
@@ -779,28 +995,19 @@ class Hotspot
         string $validity = '1d',
         array $options = []
     ): array {
-        $onLogin = $this->generateOnLoginScript($validity, $options);
-
-        $params = [
-            'name'                => $name,
-            'rate-limit'          => $rateLimit,
-            'shared-users'        => (string)($options['shared_users'] ?? '1'),
-            'status-autorefresh'  => '1m',
-            'transparent-proxy'   => 'no',
-            'on-login'            => $onLogin,
-        ];
-
-        if (!empty($options['address_pool'])) {
-            $params['address-pool'] = $options['address_pool'];
-        }
-
-        $existing = $this->conn->read('/ip/hotspot/user/profile/print', ['name' => $name]);
-        if (!empty($existing) && is_array($existing) && !isset($existing['error'])) {
-            $id = $existing[0]['.id'] ?? $name;
-            return $this->conn->set('/ip/hotspot/user/profile/set', $id, $params);
-        }
-
-        return $this->conn->write('/ip/hotspot/user/profile/add', $params);
+        return $this->setupMikhmonProfile(
+            $name,
+            $rateLimit,
+            $validity,
+            (float)($options['price'] ?? 0),
+            $options['selling_price'] ?? null,
+            $options['expiry_mode'] ?? 'remc',
+            $options['lock_user'] ?? ($options['lock_mac'] ? 'Enable' : 'Disable'),
+            $options['parent_queue'] ?? 'none',
+            $options['address_pool'] ?? 'none',
+            (string)($options['shared_users'] ?? '1'),
+            $options
+        );
     }
 
     /**

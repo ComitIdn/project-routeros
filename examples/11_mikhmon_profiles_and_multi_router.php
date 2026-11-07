@@ -79,23 +79,72 @@ $alertDispatch = $bot->broadcast("🚨 [ALERT] Router " . $ros->getRouterId() . 
 echo "    Broadcast Result: Telegram sent=" . ($alertDispatch['telegram']['sent'] ?? 0) . ", WhatsApp sent=" . ($alertDispatch['whatsapp']['sent'] ?? 0) . "\n\n";
 
 // -------------------------------------------------------------------------
-// 4. Mikhmon Official Hotspot On-Login & Profile Generation
+// 4. Mikhmon Official Hotspot User Profiles (V24h & V30D)
 // -------------------------------------------------------------------------
-echo "[4] Mikhmon Official Hotspot User Profile & On-Login Script:\n";
-$onLoginScript = $ros->hotspot()->generateOnLoginScript('1d', [
-    'lock_mac'         => true,
-    'track_expiry'     => true,
-    'expiry_mode'      => 'remove',
-    'price'            => 5000,
-    'telegram_token'   => '123456:ABC-DEF',
-    'telegram_chat_id' => '-1001234567890',
-]);
-echo "    Generated On-Login Script Preview:\n";
-$lines = explode("\n", $onLoginScript);
-foreach (array_slice($lines, 0, 4) as $line) {
-    echo "      > {$line}\n";
-}
-echo "      > ... (Total " . count($lines) . " lines of production RouterOS script)\n\n";
+echo "[4] Mikhmon Official Hotspot User Profiles & Scripts:\n";
+
+// Example A: Profile "V24h" (3M/2M, 24h, Rp 8.000 / Rp 10.000, Mode remc/R, pool none)
+$v24hScript = $ros->hotspot()->generateMikhmonOfficialOnLoginScript(
+    'V24h',
+    '24h',
+    8000,
+    10000,
+    'remc',
+    'Disable',
+    ['session_id' => '2312005']
+);
+$v24hCli = $ros->hotspot()->generateMikhmonProfileCliCommand(
+    'V24h',
+    '3M/2M',
+    '24h',
+    8000,
+    10000,
+    'remc',
+    'Disable',
+    'none',
+    'none',
+    '1',
+    ['session_id' => '2312005']
+);
+
+echo "    [A] Profile 'V24h' (Mode remc / R, Rp 8.000, Jual Rp 10.000):\n";
+echo "        CLI Add : " . substr($v24hCli, 0, 105) . " ...\"\n";
+echo "        Script  : " . substr($v24hScript, 0, 115) . " ...\n\n";
+
+// Example B: Profile "V30D" (3M/2M, 30d, Rp 0 / Rp 150.000, Mode ntfc/N, pool none)
+$v30dScript = $ros->hotspot()->generateMikhmonOfficialOnLoginScript(
+    'V30D',
+    '30d',
+    0,
+    150000,
+    'ntfc',
+    'Disable',
+    ['session_id' => '2608001']
+);
+$v30dCli = $ros->hotspot()->generateMikhmonProfileCliCommand(
+    'V30D',
+    '3M/2M',
+    '30d',
+    0,
+    150000,
+    'ntfc',
+    'Disable',
+    'none',
+    'none',
+    '1',
+    ['session_id' => '2608001']
+);
+
+echo "    [B] Profile 'V30D' (Mode ntfc / N, Rp 0, Jual Rp 150.000):\n";
+echo "        CLI Add : " . substr($v30dCli, 0, 105) . " ...\"\n";
+echo "        Script  : " . substr($v30dScript, 0, 115) . " ...\n\n";
+
+// List available pools & queues for dropdown selection
+$availablePools = $ros->hotspot()->getPoolList();
+$availableQueues = $ros->hotspot()->getParentQueueList();
+echo "    [C] Available Options for UI Dropdowns:\n";
+echo "        Address Pools : " . json_encode($availablePools) . "\n";
+echo "        Parent Queues : " . json_encode($availableQueues) . "\n\n";
 
 // -------------------------------------------------------------------------
 // 5. Mikhmon Official PPPoE Isolir Script & Scheduler

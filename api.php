@@ -208,12 +208,98 @@ try {
             if (empty($name)) {
                 Response::json(null, 400, 'Parameter name is required');
             }
-            $rate = $request['rate_limit'] ?? '2M/5M';
-            $validity = $request['validity'] ?? '1d';
+            $rate = $request['rate_limit'] ?? ($request['rate'] ?? '3M/2M');
+            $validity = $request['validity'] ?? '24h';
             $price = (float)($request['price'] ?? 0);
-            $expiryMode = $request['expiry_mode'] ?? 'remove';
-            $res = $ros->hotspot()->setupMikhmonProfile($name, $rate, $validity, $price, $expiryMode, $request['options'] ?? []);
-            Response::json($res, 201, "Mikhmon official Hotspot profile {$name} successfully configured with auto-cleanup scheduler");
+            $sellingPrice = isset($request['selling_price']) ? (float)$request['selling_price'] : (isset($request['sprice']) ? (float)$request['sprice'] : $price);
+            $expiryMode = $request['expiry_mode'] ?? ($request['mode'] ?? 'remc');
+            $lockUser = $request['lock_user'] ?? ($request['lock'] ?? 'Disable');
+            $parentQueue = $request['parent_queue'] ?? ($request['queue'] ?? 'none');
+            $addressPool = $request['address_pool'] ?? ($request['pool'] ?? 'none');
+            $sharedUsers = (string)($request['shared_users'] ?? '1');
+
+            $res = $ros->hotspot()->setupMikhmonProfile(
+                $name,
+                $rate,
+                $validity,
+                $price,
+                $sellingPrice,
+                $expiryMode,
+                $lockUser,
+                $parentQueue,
+                $addressPool,
+                $sharedUsers,
+                $request['options'] ?? []
+            );
+            Response::json($res, 201, "Mikhmon official Hotspot profile {$name} configured with parent-queue, address-pool and on-login script");
+            break;
+
+        case 'hotspot_generate_script':
+            $name = $request['name'] ?? 'V24h';
+            $rate = $request['rate_limit'] ?? ($request['rate'] ?? '3M/2M');
+            $validity = $request['validity'] ?? '24h';
+            $price = (float)($request['price'] ?? 8000);
+            $sellingPrice = isset($request['selling_price']) ? (float)$request['selling_price'] : 10000;
+            $expiryMode = $request['expiry_mode'] ?? 'remc';
+            $lockUser = $request['lock_user'] ?? 'Disable';
+            $parentQueue = $request['parent_queue'] ?? 'none';
+            $addressPool = $request['address_pool'] ?? 'none';
+            $sharedUsers = (string)($request['shared_users'] ?? '1');
+
+            $script = $ros->hotspot()->generateMikhmonOfficialOnLoginScript(
+                $name,
+                $validity,
+                $price,
+                $sellingPrice,
+                $expiryMode,
+                $lockUser,
+                $request['options'] ?? []
+            );
+
+            $cliCommand = $ros->hotspot()->generateMikhmonProfileCliCommand(
+                $name,
+                $rate,
+                $validity,
+                $price,
+                $sellingPrice,
+                $expiryMode,
+                $lockUser,
+                $parentQueue,
+                $addressPool,
+                $sharedUsers,
+                $request['options'] ?? []
+            );
+
+            Response::json([
+                'profile_name'   => $name,
+                'rate_limit'     => $rate,
+                'validity'       => $validity,
+                'price'          => $price,
+                'selling_price'  => $sellingPrice,
+                'expiry_mode'    => $expiryMode,
+                'lock_user'      => $lockUser,
+                'parent_queue'   => $parentQueue,
+                'address_pool'   => $addressPool,
+                'shared_users'   => $sharedUsers,
+                'on_login'       => $script,
+                'cli_command'    => $cliCommand,
+            ], 200, "Mikhmon Official Script & CLI Command generated");
+            break;
+
+        case 'ip_pools':
+            $poolList = $ros->hotspot()->getPoolList();
+            $rawPools = $ros->ip()->getPools();
+            Response::json([
+                'dropdown_options' => $poolList,
+                'pools'            => $rawPools,
+            ], 200, "IP Pools list for dropdown");
+            break;
+
+        case 'parent_queues':
+            $queueList = $ros->hotspot()->getParentQueueList();
+            Response::json([
+                'dropdown_options' => $queueList,
+            ], 200, "Parent simple queues list for dropdown");
             break;
 
         // --- FIREWALL SECURITY HARDENING ---
