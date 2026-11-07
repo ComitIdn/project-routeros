@@ -1,0 +1,11 @@
+/vendor/
+.env
+.DS_Store
+*.log
+*.sqlite
+*.sqlite3
+*.db
+/database/cache/*
+!/database/cache/.gitkeep
+/database/exports/*
+!/database/exports/.gitkeep
