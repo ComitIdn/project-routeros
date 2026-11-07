@@ -82,31 +82,31 @@ echo "Mendukung 802.11a/b/g/n/ac, NV2 TDMA, Nstreme, 60GHz, dan WiFiWave2/WiFi 6
 $hw = $ros->ptmp()->detectHardware();
 
 // Ambil daftar station CPE yang terhubung beserta metrik sinyal TX/RX, CCQ, dan jarak
-$stations = $ros->ptmp()->getStations('wlan1');
+$stations = $ros->ptmp()->getStations();
 foreach ($stations as $cpe) {
     echo "MAC: {$cpe['mac_address']} | Sinyal: {$cpe['signal_strength']} | CCQ: {$cpe['ccq_tx']} | Health: {$cpe['health']}\n";
 }
 
 // Ringkasan kesehatan jaringan PTMP
-$metrics = $ros->ptmp()->getStationQualityMetrics('wlan1');
+$metrics = $ros->ptmp()->getStationQualityMetrics();
 echo "Total CPE: {$metrics['total_stations']} | Link Optimal: {$metrics['optimal_count']}\n";
 
 // Manajemen Access-List (Whitelist / Blacklist CPE)
-$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', 'wlan1', '-80..120', 'Pelanggan Tower A', true);
+$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', null, '-80..120', 'Pelanggan Tower A', true);
 
-// Set Frekuensi & Channel Width AP Tower
-$ros->ptmp()->setChannel('wlan1', 5200, '5ghz-only-n', '20/40mhz-XX');
+// Set Frekuensi & Channel Width AP Tower (bila router memiliki interface wireless/PTMP)
+$ros->ptmp()->setChannel('ptmp-ap', 5200, '5ghz-only-n', '20/40mhz-XX');
 
 // Aktifkan mode MikroTik NV2 TDMA untuk mengatasi hidden station
-$ros->ptmp()->setProtocol('wlan1', 'nv2');
-$ros->ptmp()->setNv2Config('wlan1', [
+$ros->ptmp()->setProtocol('ptmp-ap', 'nv2');
+$ros->ptmp()->setNv2Config('ptmp-ap', [
     'nv2-cell-radius'      => 30, // 30 km
     'nv2-tdma-period-size' => 2,  // 2 ms
 ]);
 */
 echo "• PTMP Module siap: \$ros->ptmp()->getStations();\n";
 echo "• PTMP Access List: \$ros->ptmp()->addAccessList(\$mac, ...);\n";
-echo "• PTMP Channel & NV2: \$ros->ptmp()->setChannel('wlan1', 5180);\n\n";
+echo "• PTMP Channel & NV2: \$ros->ptmp()->setChannel(\$interface, 5180);\n\n";
 
 echo "Semua fitur di atas juga tersedia melalui:\n";
 echo "  1. CLI Terminal    : php console.php ptmp stations\n";

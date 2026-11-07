@@ -23,7 +23,7 @@ Usage in Python:
     # Multi-PTMP Wireless Management
     stations = ros.ptmp.get_stations()
     ros.ptmp.kick_station("AA:BB:CC:DD:EE:FF")
-    ros.ptmp.set_channel("wlan1", 5180)
+    ros.ptmp.set_channel("ptmp-ap", 5180)
 
 Usage via CLI:
     python routeros.py status
@@ -88,6 +88,7 @@ class RouterOS:
         self.voucher = VoucherModule(self)
         self.pppoe = PPPoEModule(self)
         self.system = SystemModule(self)
+        self.interface = InterfaceModule(self)
 
     @classmethod
     def via_api(cls, api_url: str) -> "RouterOS":
@@ -381,6 +382,39 @@ class SystemModule:
     def get_identity(self) -> str:
         res = self.ros.read("/system/identity")
         return res[0].get("name", "MikroTik") if res and isinstance(res, list) else "MikroTik"
+
+
+class InterfaceModule:
+    """Enterprise Server Interface Sub-module (SFP, Bonding, VRRP, VLANs, WireGuard)."""
+    def __init__(self, ros: RouterOS):
+        self.ros = ros
+
+    def get_all(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface")
+
+    def get_ethernet(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/ethernet")
+
+    def get_sfp(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/ethernet", {"combo-mode": "sfp"})
+
+    def get_bridges(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/bridge")
+
+    def get_vlans(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/vlan")
+
+    def get_bonding(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/bonding")
+
+    def get_vrrp(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/vrrp")
+
+    def get_wireguard(self) -> List[Dict[str, Any]]:
+        return self.ros.read("/interface/wireguard")
+
+    def get_traffic(self, interface: str = "ether1") -> Any:
+        return self.ros.read(f"/interface/monitor-traffic?interface={urllib.parse.quote(interface)}&once=")
 
 
 # --- CLI ENTRY POINT ---

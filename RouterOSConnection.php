@@ -83,7 +83,6 @@ class RouterOSConnection
     public function ip(): \RouterOSFramework\Modules\Ip { return $this->framework->ip(); }
     public function backup(): \RouterOSFramework\Modules\Backup { return $this->framework->backup(); }
     public function tool(): \RouterOSFramework\Modules\Tool { return $this->framework->tool(); }
-    public function wireless(): \RouterOSFramework\Modules\Wireless { return $this->framework->wireless(); }
     public function vpn(): \RouterOSFramework\Modules\Vpn { return $this->framework->vpn(); }
     public function billing(): \RouterOSFramework\Modules\Billing { return $this->framework->billing(); }
     public function dnsFilter(): \RouterOSFramework\Modules\DnsFilter { return $this->framework->dnsFilter(); }
@@ -171,7 +170,6 @@ class RouterOSConnection
             $this->framework->ip(),
             $this->framework->backup(),
             $this->framework->tool(),
-            $this->framework->wireless(),
             $this->framework->vpn(),
         ];
 
@@ -182,7 +180,7 @@ class RouterOSConnection
         }
 
         // 3. Fallback: Strip legacy module prefixes (e.g. getHotspotActiveTraffic -> getActiveTraffic)
-        $prefixes = ['Hotspot', 'Pppoe', 'Firewall', 'Queue', 'Wireless', 'System', 'Vpn', 'Backup', 'Tool'];
+        $prefixes = ['Hotspot', 'Pppoe', 'Firewall', 'Queue', 'System', 'Vpn', 'Backup', 'Tool', 'Interface'];
         foreach ($prefixes as $p) {
             if (str_contains($method, $p)) {
                 $stripped = lcfirst(str_replace($p, '', $method));

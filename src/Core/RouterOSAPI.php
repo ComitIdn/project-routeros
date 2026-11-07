@@ -16,7 +16,6 @@ use RouterOSFramework\Modules\System;
 use RouterOSFramework\Modules\Tool;
 use RouterOSFramework\Modules\Voucher;
 use RouterOSFramework\Modules\Vpn;
-use RouterOSFramework\Modules\Wireless;
 
 /**
  * Class RouterOSAPI
@@ -52,7 +51,6 @@ class RouterOSAPI
     private ?Ip $ipModule = null;
     private ?Backup $backup = null;
     private ?Tool $tool = null;
-    private ?Wireless $wireless = null;
     private ?Vpn $vpn = null;
     private ?Billing $billing = null;
     private ?DnsFilter $dnsFilter = null;
@@ -394,11 +392,6 @@ class RouterOSAPI
     public function tool(): Tool
     {
         return $this->tool ??= new Tool($this->getInternalConnection(), $this->db);
-    }
-
-    public function wireless(): Wireless
-    {
-        return $this->wireless ??= new Wireless($this->getInternalConnection(), $this->db);
     }
 
     public function vpn(): Vpn

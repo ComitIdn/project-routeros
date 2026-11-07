@@ -27,7 +27,6 @@ use RouterOSFramework\Modules\System;
 use RouterOSFramework\Modules\Tool;
 use RouterOSFramework\Modules\Voucher;
 use RouterOSFramework\Modules\Vpn;
-use RouterOSFramework\Modules\Wireless;
 
 /**
  * Class RouterOS
@@ -55,7 +54,6 @@ class RouterOS
     private ?MultiRouter $multi = null;
     private ?Backup $backup = null;
     private ?Tool $tool = null;
-    private ?Wireless $wireless = null;
     private ?Ptmp $ptmp = null;
     private ?Vpn $vpn = null;
     private ?Billing $billing = null;
@@ -130,7 +128,6 @@ class RouterOS
         $this->bot = null;
         $this->backup = null;
         $this->tool = null;
-        $this->wireless = null;
         $this->ptmp = null;
         $this->vpn = null;
         $this->billing = null;
@@ -201,11 +198,6 @@ class RouterOS
     public function ptmp(): Ptmp
     {
         return $this->ptmp ??= new Ptmp($this->connection, $this->db);
-    }
-
-    public function wireless(): Wireless
-    {
-        return $this->wireless ??= new Wireless($this->connection, $this->db);
     }
 
     public function firewall(): Firewall

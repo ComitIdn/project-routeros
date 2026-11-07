@@ -242,7 +242,10 @@ try {
             break;
 
         case 'ptmp_set_channel':
-            $iface = $request['interface'] ?? 'wlan1';
+            $iface = $request['interface'] ?? '';
+            if (empty($iface)) {
+                Response::json(null, 400, 'Parameter interface is required (server routers do not have default wlan interfaces)');
+            }
             $freq = $request['frequency'] ?? 'auto';
             $band = $request['band'] ?? '5ghz-only-n';
             $width = $request['width'] ?? '20/40mhz-XX';
@@ -251,14 +254,20 @@ try {
             break;
 
         case 'ptmp_set_protocol':
-            $iface = $request['interface'] ?? 'wlan1';
+            $iface = $request['interface'] ?? '';
+            if (empty($iface)) {
+                Response::json(null, 400, 'Parameter interface is required');
+            }
             $proto = $request['wireless_protocol'] ?? ($request['protocol'] ?? 'nv2');
             $res = $ros->ptmp()->setProtocol($iface, $proto);
             Response::json($res, 200, "Wireless protocol on {$iface} set to {$proto}");
             break;
 
         case 'ptmp_set_nv2':
-            $iface = $request['interface'] ?? 'wlan1';
+            $iface = $request['interface'] ?? '';
+            if (empty($iface)) {
+                Response::json(null, 400, 'Parameter interface is required');
+            }
             $opts = $request['options'] ?? [];
             $res = $ros->ptmp()->setNv2Config($iface, $opts);
             Response::json($res, 200, "NV2 config updated on {$iface}");

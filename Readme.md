@@ -129,12 +129,11 @@ project-routeros/
 │       ├── PPPoE.php           # Manajemen PPPoE (Secret, Profile, Active, Server, Isolir)
 │       ├── Firewall.php        # Filter, NAT Masquerade, Mangle, RAW, Address List
 │       ├── Queue.php           # Simple Queue & Bandwidth Limiter otomatis
-│       ├── NetworkInterface.php# Monitoring Interface, Traffic Real-time, Bridge, WireGuard
+│       ├── NetworkInterface.php# Enterprise Server: SFP/SFP+ Fiber, LACP Bonding, VRRP Failover, VLAN, WireGuard, Traffic
 │       ├── System.php          # Resources, Clock, Reboot, Ping, Script, Scheduler, v6/v7 Check
 │       ├── Ip.php              # Addresses, Pools, DHCP Server, DHCP Lease, ARP, Static DNS
 │       ├── Backup.php          # Binary Backup (.backup) & Export Konfigurasi (.rsc)
 │       ├── Tool.php            # Wake-on-LAN, Email, SMS, Traceroute, IP Scan, Bandwidth Test
-│       ├── Wireless.php        # WiFi Client Table, Sinyal dBm, Ganti SSID & Password WiFi
 │       ├── Vpn.php             # WireGuard Peers & Interface, L2TP, OpenVPN, SSTP
 │       ├── Billing.php         # Payment Gateway Webhook (Tripay, Midtrans, QRIS)
 │       ├── DnsFilter.php       # DNS AdBlocker & Domain Redirect Blacklist
@@ -476,12 +475,11 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `ensureIsolateProfile()`, `syncToDatabase()` |
 | **`firewall()`** | `getFilterRules()`, `addFilterRule()`, `getNatRules()`, `addMasquerade()`, `addAddressList()` |
 | **`queue()`** | `getAll()`, `add()`, `limitBandwidth()`, `remove()` |
-| **`interface()`** | `getAll()`, `getEthernet()`, `getBridges()`, `monitorTraffic()`, `enable()`, `disable()` |
+| **`interface()`** | `getAll()`, `getEthernet()`, `getSfp()`, `getBridges()`, `getVlans()`, `getBonding()`, `getVrrp()`, `getWireGuard()`, `getEoip()`, `getGre()`, `getVxlan()`, `monitorTraffic()`, `enable()`, `disable()`, `setComment()` |
 | **`system()`** | `getResources()`, `getIdentity()`, `setIdentity()`, `getClock()`, `getLogs()`, `ping()`, `reboot()`, `getVersion()`, `getMajorVersion()`, `isV7()`, `isV6()` |
 | **`ip()`** | `getAddresses()`, `addAddress()`, `getPools()`, `getDhcpLeases()`, `makeDhcpLeaseStatic()`, `getArpTable()` |
 | **`backup()`** | `saveBackup()`, `exportConfig()`, `getFiles()`, `removeFile()` |
 | **`tool()`** | `wakeOnLan()`, `sendEmail()`, `sendSms()`, `traceroute()`, `ipScan()`, `bandwidthTest()` |
-| **`wireless()`** | `getConnectedClients()`, `setWifiPassword()`, `setSsid()`, `disconnectClient()` |
 | **`vpn()`** | `getWireguardPeers()`, `addWireguardPeer()`, `removeWireguardPeer()`, `getL2tpServer()` |
 | **`billing()`** | `handleWebhook()`, `generateVoucherForPayment()` |
 | **`dnsFilter()`** | `blockDomain()`, `unblockDomain()`, `flushCache()`, `importHostsBlocklist()` |

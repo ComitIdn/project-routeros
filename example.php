@@ -90,10 +90,10 @@ echo "🔹 [Auto Detect]     \$ros->useAuto();   // Auto-detect port terbuka\n";
 echo "\n--- Multi-PTMP Wireless Management ---\n";
 echo "🔹 [PTMP Stations]    \$stations = \$ros->ptmp()->getStations();\n";
 echo "🔹 [PTMP Metrics]     \$metrics  = \$ros->ptmp()->getStationQualityMetrics();\n";
-echo "🔹 [PTMP Access-List] \$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', 'wlan1', '-80..120');\n";
+echo "🔹 [PTMP Access-List] \$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', null, '-80..120');\n";
 echo "🔹 [PTMP Kick CPE]    \$ros->ptmp()->kickStation('00:0C:42:AA:BB:CC');\n";
-echo "🔹 [PTMP Set Channel] \$ros->ptmp()->setChannel('wlan1', 5180, '5ghz-only-n');\n";
-echo "🔹 [PTMP Set NV2]     \$ros->ptmp()->setProtocol('wlan1', 'nv2');\n";
+echo "🔹 [PTMP Set Channel] \$ros->ptmp()->setChannel(\$apInterface, 5180, '5ghz-only-n');\n";
+echo "🔹 [PTMP Set NV2]     \$ros->ptmp()->setProtocol(\$apInterface, 'nv2');\n";
 
 /*
 |--------------------------------------------------------------------------

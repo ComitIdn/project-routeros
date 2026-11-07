@@ -248,15 +248,23 @@ switch ($command) {
                 break;
 
             case 'channel':
-                $iface = $args[2] ?? 'wlan1';
+                $iface = $args[2] ?? '';
                 $freq = $args[3] ?? '5180';
+                if (!$iface) {
+                    echo "⚠️  Penggunaan: php console.php ptmp channel [interface] [frequency]\n";
+                    exit(1);
+                }
                 $res = $ros->ptmp()->setChannel($iface, $freq);
                 echo !isset($res['error']) ? "✅ Channel pada {$iface} diset ke {$freq} MHz\n" : "❌ Gagal: {$res['error']}\n";
                 break;
 
             case 'protocol':
-                $iface = $args[2] ?? 'wlan1';
+                $iface = $args[2] ?? '';
                 $proto = $args[3] ?? 'nv2';
+                if (!$iface) {
+                    echo "⚠️  Penggunaan: php console.php ptmp protocol [interface] [protocol]\n";
+                    exit(1);
+                }
                 $res = $ros->ptmp()->setProtocol($iface, $proto);
                 echo !isset($res['error']) ? "✅ Protokol PTMP pada {$iface} diset ke {$proto}\n" : "❌ Gagal: {$res['error']}\n";
                 break;

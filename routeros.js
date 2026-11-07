@@ -198,6 +198,7 @@
             this.pppoe = new PPPoEModule(this);
             this.ptmp = new PtmpModule(this);
             this.system = new SystemModule(this);
+            this.interface = new InterfaceModule(this);
 
             // Multi-Router Pool
             this.multi = new MultiRouterPool(this);
@@ -772,11 +773,56 @@
         }
     }
 
+    /**
+     * Enterprise Server Interface Sub-module (SFP, Bonding LACP, VRRP, VLANs, WireGuard)
+     */
+    class InterfaceModule {
+        constructor(ros) { this.ros = ros; }
+
+        async getAll() {
+            return this.ros.read('interface');
+        }
+        async getEthernet() {
+            return this.ros.read('interface/ethernet');
+        }
+        async getSfp() {
+            return this.ros.read('interface/ethernet', { 'combo-mode': 'sfp' });
+        }
+        async getBridges() {
+            return this.ros.read('interface/bridge');
+        }
+        async getVlans() {
+            return this.ros.read('interface/vlan');
+        }
+        async getBonding() {
+            return this.ros.read('interface/bonding');
+        }
+        async getVrrp() {
+            return this.ros.read('interface/vrrp');
+        }
+        async getWireGuard() {
+            return this.ros.read('interface/wireguard');
+        }
+        async getTraffic(iface = 'ether1') {
+            return this.ros.read(`interface/monitor-traffic?interface=${encodeURIComponent(iface)}&once=`);
+        }
+        async enable(nameOrId) {
+            return this.ros.toggle(nameOrId, true, 'interface');
+        }
+        async disable(nameOrId) {
+            return this.ros.toggle(nameOrId, false, 'interface');
+        }
+        async setComment(nameOrId, comment) {
+            return this.ros.set('interface', nameOrId, { comment });
+        }
+    }
+
     return {
         RouterOS,
         RouterOSClient: RouterOS,
         MultiRouterPool,
         Debugger,
         ConfigHelper,
+        InterfaceModule,
     };
 }));

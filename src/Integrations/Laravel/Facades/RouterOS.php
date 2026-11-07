@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Facade;
  * @method static \RouterOSFramework\Modules\Voucher voucher()
  * @method static \RouterOSFramework\Modules\PPPoE pppoe()
  * @method static \RouterOSFramework\Modules\Ptmp ptmp()
- * @method static \RouterOSFramework\Modules\Wireless wireless()
  * @method static \RouterOSFramework\Modules\Firewall firewall()
  * @method static \RouterOSFramework\Modules\Queue queue()
  * @method static \RouterOSFramework\Modules\NetworkInterface interface()
