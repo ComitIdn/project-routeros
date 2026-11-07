@@ -1,27 +1,27 @@
 <div align="center" id="top">
   <h1>⚡ Project RouterOS PHP Framework (Full Version)</h1>
-  <p><b>Lightweight, Modular &amp; Enterprise-Ready PHP API Framework for MikroTik RouterOS</b><br>
-  Inspired by <a href="https://github.com/comitIdn/RouterOS-API">comitIdn/RouterOS-API</a> &bull; Full Support for <b>Manual API</b>, <b>SQL Database (SQLite &amp; MySQL)</b>, <b>Flat-File JSON Storage</b>, <b>Web Apps</b>, <b>Chat Bots (Telegram/WhatsApp)</b>, <b>Payment Gateways</b>, and <b>Terminal CLI</b></p>
+  <p><b>Lightweight, Multi-Protocol &amp; Enterprise-Ready PHP API Framework for MikroTik RouterOS</b><br>
+  Inspired by <a href="https://github.com/comitIdn/RouterOS-API">comitIdn/RouterOS-API</a> &bull; Full Support for <b>Multi-Protocol Transports (API, REST, SSH, Telnet)</b>, <b>Multi-PTMP Wireless</b>, <b>Full CRUD Actions</b>, <b>SQL Database</b>, <b>JSON Storage</b>, <b>Web Apps</b>, <b>Python SDK</b>, <b>JavaScript SDK</b>, <b>Chat Bots</b>, and <b>Terminal CLI</b></p>
 </div>
 
 <p align="center">
   <img alt="PHP Version" src="https://img.shields.io/badge/PHP-7.4%20%7C%208.x-777BB4?logo=php&logoColor=white">
   <img alt="RouterOS" src="https://img.shields.io/badge/RouterOS-v6%20%7C%20v7-E05A47?logo=mikrotik&logoColor=white">
+  <img alt="Python SDK" src="https://img.shields.io/badge/Python-3.x%20SDK-3776AB?logo=python&logoColor=white">
+  <img alt="JS SDK" src="https://img.shields.io/badge/JavaScript-ES6%20%7C%20Node-F7DF1E?logo=javascript&logoColor=black">
+  <img alt="Transports" src="https://img.shields.io/badge/Transports-API%20%7C%20REST%20%7C%20SSH%20%7C%20Telnet-purple">
+  <img alt="PTMP" src="https://img.shields.io/badge/Wireless-Multi--PTMP%20NV2-green">
   <img alt="Database" src="https://img.shields.io/badge/Database-SQLite%20%7C%20MySQL%20%7C%20JSON-003B57?logo=sqlite&logoColor=white">
-  <img alt="JSON API" src="https://img.shields.io/badge/API-REST%20JSON%20CORS-blue">
-  <img alt="Bots" src="https://img.shields.io/badge/Bots-Telegram%20%7C%20WhatsApp-25D366?logo=whatsapp&logoColor=white">
-  <img alt="Payment" src="https://img.shields.io/badge/Billing-Tripay%20%7C%20Midtrans%20%7C%20QRIS-orange">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-green">
 </p>
 
 <p align="center">
   <a href="#-fitur-utama-framework">Fitur Utama</a> &nbsp;|&nbsp;
   <a href="#-struktur-arsitektur">Arsitektur</a> &nbsp;|&nbsp;
-  <a href="#-instalasi--konfigurasi">Instalasi</a> &nbsp;|&nbsp;
-  <a href="#-gaya-penggunaan-lengkap">Gaya Penggunaan</a> &nbsp;|&nbsp;
-  <a href="#-modul-tambahan-powerhouse">Modul Tambahan</a> &nbsp;|&nbsp;
-  <a href="#-integrasi-bot-telegram--whatsapp">Bot Integration</a> &nbsp;|&nbsp;
-  <a href="#-payment-gateway--auto-voucher">Payment Gateway</a> &nbsp;|&nbsp;
+  <a href="#-multi-protocol-transports-api-rest-ssh-telnet">Transports</a> &nbsp;|&nbsp;
+  <a href="#-full-operational-crud-actions-terpisah">CRUD Actions</a> &nbsp;|&nbsp;
+  <a href="#-multi-ptmp-point-to-multipoint-wireless-management">PTMP Wireless</a> &nbsp;|&nbsp;
+  <a href="#-dukungan-multi-platform--bahasa-php-python-js-cli-json">Multi-Bahasa</a> &nbsp;|&nbsp;
   <a href="#-rest-api-json-endpoint">REST API</a> &nbsp;|&nbsp;
   <a href="#-terminal-cli-console-tool">Terminal CLI</a> &nbsp;|&nbsp;
   <a href="#-cheat-sheet-modul-lengkap">Cheat Sheet</a>
@@ -31,29 +31,28 @@
 
 ## 🌟 Fitur Utama Framework
 
-1. **Gaya Klasik `comitIdn/RouterOS-API` Kompatibel Penuh**:
-   - Mendukung metode socket native: `connect()`, `comm()`, `write()`, `read()`, dan `disconnect()`.
-   - Mengintegrasikan fungsi utilitas bawaan: `formatBytes()`, `convertToFullMonthName()`, `formatInterval()`, `encrypt()`, dan `decrypt()`.
-2. **Dua Jenis Penyimpanan Database (SQL &amp; JSON)**:
-   - **SQL Database (PDO)**: Bawaan **SQLite** tanpa instalasi server database (*zero-config*) dan dukungan **MySQL / MariaDB / PostgreSQL**.
-   - **JSON Flat-File Storage**: Simpan dan ambil data konfigurasi, voucher, dan log dalam bentuk file JSON langsung (`database/json/`).
-3. **Modul Lengkap (*Full Version*)**:
-   - **Hotspot & Voucher Engine**: Generator voucher massal, batas kuota/waktu, cetak kartu voucher siap print, kick user, dan auto-clean expired.
-   - **Device Bypass & Host**: Bypass Smart TV, CCTV, printer tanpa login portal, dan blokir MAC mencurigakan.
-   - **PPPoE & Queue**: Manajemen secret pelanggan ISP, profil bandwidth, dan pembatas kecepatan Simple Queue.
-   - **Firewall & IP**: Filter, NAT Masquerade, Mangle, RAW, Address List, IP Pool, DHCP Server, DHCP Lease, ARP, dan Static DNS.
-   - **Interface & System**: Monitoring trafik *real-time* RX/TX, Ethernet, Bridge, WireGuard, Clock, Script, Scheduler, Log, Ping, dan Reboot.
-   - **Backup & Export**: Pembuatan binary backup `.backup` dan export skrip `.rsc` otomatis.
-   - **Network Tools**: Wake-on-LAN (WOL remote boot PC), Email alert, SMS sender, Traceroute, IP Scan, dan Bandwidth Speed Test.
-   - **Wireless (Wi-Fi)**: Registration table, sinyal dBm, ganti password Wi-Fi, ganti SSID, dan kick client Wi-Fi.
-   - **VPN & Tunneling**: WireGuard peers & interface, L2TP, OpenVPN, dan SSTP server.
-   - **Billing & Payment Gateway**: Webhook otomatis Tripay, Midtrans, Duitku, Xendit, dan QRIS untuk menerbitkan voucher otomatis saat pembayaran sukses.
-   - **AdBlock & DNS Filter**: Pemblokir iklan / malware berbasis DNS redirect.
-4. **Siap Pakai untuk Segala Macam Project**:
-   - **Website Skala Besar (Enterprise)**: Dilengkapi *Multi-Router Manager* dan *Caching Layer* (TTL) agar CPU MikroTik tidak *overload*.
-   - **REST API JSON**: Endpoint [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.php) siap konsumsi untuk frontend modern (React, Vue, Flutter).
-   - **Chat Bot (Telegram & WhatsApp)**: Endpoint [`bot_webhook.php`](file:///data/data/com.termux/files/home/project-routeros/bot_webhook.php) dan class [`BotHandler`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/BotHandler.php).
-   - **Terminal CLI Console**: Skrip interaktif [`console.php`](file:///data/data/com.termux/files/home/project-routeros/console.php) untuk eksekusi langsung dari Terminal / Termux.
+1. **Bebas Ketergantungan Monoton (Multi-Protocol Transports)**:
+   - Tidak terkunci hanya pada port socket API binary (8728/8729).
+   - Mendukung **REST HTTP/HTTPS API Native (RouterOS v7+)** via port 80 / 443 tanpa dependensi socket biner.
+   - Mendukung **SSH CLI (Port 22)** dengan parser otomatis output terminal.
+   - Mendukung **Telnet Socket (Port 23)** tanpa dependensi ekstensi eksternal.
+   - **Auto-Transport Detection**: Secara cerdas mendeteksi protokol router yang aktif (API -> REST -> SSH -> Telnet).
+2. **Full Operational Actions Terpisah (Superpower CRUD)**:
+   - File terpisah, bersih tanpa penamaan ganda: **`Creator`**, **`Writer`**, **`Reader`**, **`Finder`**, **`Setter`**, **`Getter`**, **`Printer`**, **`Remover`**, **`Toggler`**.
+   - Tambah record baru, jalankan script/terminal raw, paginasi data, cari `.id` dari nama, ubah limit/komentar/email/nama, toggle aktif/nonaktif dalam 1 baris.
+3. **Multi-PTMP Wireless Management (Untuk Tower & Base Station WISP / RT-RW Net)**:
+   - Mendukung segala jenis perangkat MikroTik: **802.11a/b/g/n/ac**, **MikroTik NV2 TDMA**, **Nstreme / Dual Nstreme**, **60GHz (w60g)**, dan **WiFiWave2 / WiFi 6**.
+   - Pantau seluruh CPE Station yang terhubung: Signal dBm (TX/RX), CCQ %, SNR, Throughput TX/RX, Jarak (km), Versi RouterOS, dan Status Kesehatan Link (*Health Index*).
+   - Manajemen Access-List (Whitelist/Blacklist MAC dengan batas toleransi sinyal), Connect-List, Kick Station, Ganti Frekuensi, Channel Width, dan Pengaturan NV2.
+4. **Dukungan Multi-Bahasa & Lingkungan Pemrograman**:
+   - **PHP**: Native / Manual, Laravel Facade & ServiceProvider, CodeIgniter 3 & 4.
+   - **Python SDK (`routeros.py`)**: Standalone library Python 3 tanpa dependensi (zero-dependency).
+   - **JavaScript SDK (`assets/js/routeros.js`)**: Universal UMD SDK untuk Browser, Vue, React, Svelte, dan Node.js.
+   - **RESTful JSON API (`api.php`)**: Endpoint siap pakai dengan CORS untuk aplikasi Mobile & Web.
+   - **Terminal CLI Console (`console.php`)**: Manajemen interaktif langsung dari terminal Linux/Termux.
+5. **Dua Jenis Penyimpanan Database (SQL PDO & JSON Flat-File)**:
+   - **SQLite** tanpa instalasi server database (*zero-config*) dan dukungan **MySQL / MariaDB / PostgreSQL**.
+   - **JSON Flat-File Storage**: Simpan konfigurasi, voucher, dan log langsung sebagai file JSON.
 
 ---
 
@@ -62,9 +61,10 @@
 ```text
 project-routeros/
 ├── config.example.php          # Template Konfigurasi Router & Database
-├── config.php                  # Konfigurasi Lokal (Host, User, Pass, DB)
+├── config.php                  # Konfigurasi Lokal (Host, User, Pass, DB, Protocol)
 ├── composer.json               # Dependensi & Autoloading PSR-4 + Laravel Auto-Discovery
 ├── example.php                 # Master Contoh Implementasi Bersih & Profesional
+├── routeros.py                 # Universal Python 3 SDK & Standalone CLI
 ├── mikrotik.php                # Alias Kompatibilitas ke Belakang (Forwarder ke example.php)
 ├── console.php                 # CLI Console Tool Interaktif untuk Terminal / Termux
 ├── api.php                     # Universal RESTful JSON API Endpoint (CORS Ready)
@@ -76,7 +76,8 @@ project-routeros/
 │   ├── 03_voucher.php          # Bulk voucher, QR Code, print card, thermal printer
 │   ├── 04_pppoe.php            # PPPoE secrets, static IP, billing overdue & auto-isolate
 │   ├── 05_actions.php          # Dedicated Actions: Finder, Setter, Getter, Printer
-│   └── 06_multi_platform.php   # Panduan integrasi Laravel, CodeIgniter, JS SDK, CLI
+│   ├── 06_multi_platform.php   # Panduan integrasi Laravel, CodeIgniter, JS SDK, CLI
+│   └── 07_ptmp_and_protocols.php # Multi-Protocol Transports & Multi-PTMP Wireless
 ├── assets/
 │   └── js/
 │       └── routeros.js         # Client-side JavaScript SDK Universal (Vanilla, Vue, React, Node)
@@ -86,10 +87,20 @@ project-routeros/
 │   ├── json/                   # Direktori penyimpanan database flat JSON
 │   └── cache/                  # Direktori cache response MikroTik (TTL)
 ├── src/
+│   ├── Transports/             # Multi-Protocol Transport Drivers
+│   │   ├── TransportInterface.php # Kontrak Transport Universal
+│   │   ├── ApiTransport.php       # Binary API Driver (Port 8728 / 8729 SSL)
+│   │   ├── RestTransport.php      # RouterOS v7+ Native REST HTTP/HTTPS Driver (Port 80 / 443)
+│   │   ├── SshTransport.php       # SSH CLI Terminal Driver (Port 22)
+│   │   ├── TelnetTransport.php    # Raw Socket Telnet Driver (Port 23)
+│   │   └── AutoTransport.php      # Auto-Discovery Driver (Deteksi Port Terbuka)
 │   ├── Actions/                # File Operasional Terpisah & Bersih (Superpower CRUD)
+│   │   ├── Creator.php         # Tambah data: IP, User, PPPoE, Queue, Access-List, VLAN
+│   │   ├── Writer.php          # Eksekusi command, script dinamis, dan Terminal CLI raw
+│   │   ├── Reader.php          # Pembacaan data, streaming wireless, dan monitoring traffic
 │   │   ├── Finder.php          # Pencarian .id dari name (findNameToId), byName, byId, byMac, byIp
-│   │   ├── Setter.php          # Pengaturan nilai granular: setLimit, setComment, setEmail, setName
-│   │   ├── Getter.php          # Pengambilan data fleksibel: getByName, getValue, count, exists
+│   │   ├── Setter.php          # Pengaturan granular: setLimit, setComment, setEmail, setName
+│   │   ├── Getter.php          # Pengambilan data fleksibel: getByName, getValue, count, pluck
 │   │   ├── Printer.php         # Eksekusi /print dengan filter, proplist spesifik & paginasi
 │   │   ├── Remover.php         # Penghapusan aman berdasarkan name, ID, atau kriteria massal
 │   │   └── Toggler.php         # Enable, disable, toggle status, dan reset-counters
@@ -102,7 +113,7 @@ project-routeros/
 │   ├── Core/
 │   │   ├── RouterOSAPI.php     # Client gaya comitIdn/RouterOS-API (connect, comm, write)
 │   │   ├── RouterOS.php        # Unified Framework Facade & Module Accessor
-│   │   ├── Connection.php      # Socket connection dengan error recovery
+│   │   ├── Connection.php      # Transport Manager dengan error recovery & dynamic switching
 │   │   ├── Database.php        # Lightweight SQL PDO Engine (SQLite & MySQL)
 │   │   ├── JsonStorage.php     # Engine Database File JSON Flat-Store
 │   │   ├── Cache.php           # High-Performance TTL Caching Layer
@@ -110,6 +121,7 @@ project-routeros/
 │   │   ├── Response.php        # Standardized JSON Response Formatter
 │   │   └── Helper.php          # Utilitas format bytes, validasi IP/MAC, PIN acak
 │   └── Modules/
+│       ├── Ptmp.php            # Multi-PTMP Wireless: NV2, Nstreme, 60GHz, Sinyal, CCQ, Access-List
 │       ├── Hotspot.php         # Manajemen Hotspot lengkap (User, Active, Host, Bypass)
 │       ├── Voucher.php         # Generator Voucher, Simpan SQL/JSON, Cetak Kupon
 │       ├── PPPoE.php           # Manajemen PPPoE (Secret, Profile, Active, Server, Isolir)
@@ -130,527 +142,253 @@ project-routeros/
 
 ---
 
-## 🚀 Instalasi & Konfigurasi
+## 🌐 Multi-Protocol Transports (API, REST, SSH, Telnet)
 
-### 1. Kebutuhan Sistem
-- PHP 7.4 atau PHP 8.x
-- Ekstensi PHP: `pdo`, `pdo_sqlite` (atau `pdo_mysql`), `sockets`, `curl`, `json`
-- MikroTik RouterOS dengan API aktif (`/ip service enable api`)
+Anda tidak lagi terbatas hanya pada port socket API biner (8728). Jika port API ditutup firewall ISP atau dinonaktifkan, Anda dapat beralih ke REST HTTP/HTTPS, SSH CLI, atau Telnet secara instan:
 
-### 2. Instalasi
-```bash
-git clone https://github.com/comitIdn/project-routeros.git
-cd project-routeros
-composer install
-```
-
-### 3. Konfigurasi (`config.php`)
-```php
-return [
-    'mikrotik' => [
-        'host'     => '192.168.88.1',
-        'user'     => 'admin',
-        'password' => 'password123',
-        'port'     => 8728, // Default RouterOS API port
-        'timeout'  => 3,
-    ],
-
-    // Database SQL (Default: SQLite zero-config, atau MySQL)
-    'database' => [
-        'driver'   => 'sqlite', // 'sqlite' atau 'mysql'
-        'file'     => __DIR__ . '/database/routeros.sqlite',
-
-        // Jika menggunakan MySQL:
-        // 'host'     => '127.0.0.1',
-        // 'port'     => 3306,
-        // 'database' => 'routeros',
-        // 'username' => 'root',
-        // 'password' => '',
-    ],
-];
-```
-
----
-
-## 💡 Gaya Penggunaan Lengkap
-
-### Gaya 1: comitIdn/RouterOS-API Style (Sangat Familiar & Cepat)
-Menggunakan sintaks khas `comitIdn/RouterOS-API` (`connect`, `comm`, `write`, `read`):
-
-```php
-require 'vendor/autoload.php';
-
-use RouterOSFramework\Core\RouterOSAPI;
-
-$api = new RouterOSAPI();
-$api->connect('192.168.88.1', 'admin', 'password', 8728);
-
-// 1. Eksekusi perintah instan dengan comm()
-$interfaces = $api->comm('/interface/print');
-$hotspotUsers = $api->comm('/ip/hotspot/user/print', ['?profile' => 'default']);
-
-// 2. Eksekusi bertingkat dengan write() dan read()
-$api->write('/ip/hotspot/active/print');
-$activeUsers = $api->read();
-
-// 3. Akses modul Hotspot, Voucher, Backup, atau Tools dari objek yang sama!
-$summary = $api->hotspot()->getSummary();
-$vouchers = $api->voucher()->generateAndSave(5, ['prefix' => 'VC-', 'limit-uptime' => '2h']);
-$api->tool()->wakeOnLan('00:11:22:33:44:55', 'ether1');
-
-$api->disconnect();
-```
-
----
-
-### Gaya 2: Modern OOP Modular Framework Style
 ```php
 use RouterOSFramework\Core\RouterOS;
 
-// Inisialisasi otomatis dari config.php
-$ros = RouterOS::withConfig('config.php');
+// 1. Koneksi REST Native (RouterOS v7+) via HTTP (80) / HTTPS (443)
+$ros = RouterOS::connect([
+    'host'     => '192.168.88.1',
+    'user'     => 'admin',
+    'pass'     => 'password',
+    'protocol' => 'rest', // Menggunakan REST JSON bawaan RouterOS v7
+]);
 
-// Hotspot
-$activeSessions = $ros->hotspot()->getActiveTraffic(); // Bandwidth human-readable
-$ros->hotspot()->disconnectUser('budi');               // Kick user
-$ros->hotspot()->bypassDevice('00:11:22:33:44:55');    // Bypass Smart TV
+// 2. Koneksi Terminal SSH (Port 22)
+$ros = RouterOS::connect([
+    'host'     => '192.168.88.1',
+    'user'     => 'admin',
+    'pass'     => 'password',
+    'protocol' => 'ssh',
+]);
 
-// Simple Queue
-$ros->queue()->limitBandwidth('192.168.88.50/32', '10M/10M', 'Limit-Staff');
+// 3. Koneksi Telnet Socket (Port 23)
+$ros = RouterOS::connect([
+    'host'     => '192.168.88.1',
+    'user'     => 'admin',
+    'pass'     => 'password',
+    'protocol' => 'telnet',
+]);
 
-// Firewall
-$ros->firewall()->addMasquerade('ether1');
+// 4. Auto-Detect: Otomatis mendeteksi port mana yang terbuka
+$ros = RouterOS::connect([
+    'host'     => '192.168.88.1',
+    'user'     => 'admin',
+    'pass'     => 'password',
+    'protocol' => 'auto',
+]);
+
+// Ganti protokol saat runtime:
+$ros->useRest();   // Beralih ke REST
+$ros->useSsh();    // Beralih ke SSH
+$ros->useTelnet(); // Beralih ke Telnet
+$ros->useApi();    // Beralih ke Binary API
 ```
 
 ---
 
-### Gaya 3: Engine Database SQL (SQLite & MySQL)
-```php
-// Buat voucher dan otomatis simpan ke RouterOS + Database SQL
-$batch = $ros->voucher()->generateAndSave(10, [
-    'prefix'            => 'VC-',
-    'length'            => 6,
-    'characters'        => 'alphanumeric',
-    'profile'           => 'default',
-    'limit-uptime'      => '2h',
-    'limit-bytes-total' => '1073741824', // 1 GB
-    'price'             => 5000,
-    'batch_tag'         => 'batch-kafe-01',
-]);
+## 🛠️ Full Operational CRUD Actions Terpisah
 
-// Query voucher langsung dari database SQL lokal
-$vouchers = $ros->voucher()->getFromDb(['status' => 'active', 'limit' => 20]);
+Setiap aksi operasional berada dalam class PHP independen di [`src/Actions/`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/), rapi, cepat, dan tanpa fungsi dobel:
 
-// Cetak kartu voucher siap cetak (Print-Ready HTML)
-echo $ros->voucher()->renderPrintCards($vouchers, [
-    'title'    => 'WIFI CAFE HOTSPOT',
-    'dns_name' => 'http://wifi.cafe',
-    'price'    => 'Rp 5.000 / 2 Jam',
-]);
-```
-
----
-
-### Gaya 4: Engine Flat-File JSON Storage
-Simpan dan baca data dalam format file JSON langsung tanpa perlu menginstal database server:
-
-```php
-$json = $ros->json();
-
-// 1. Simpan konfigurasi ke database/json/app_config.json
-$json->set('app_config', 'site_name', 'Hotspot RT/RW Net');
-
-// 2. Tambah data transaksi ke database/json/transactions.json
-$json->push('transactions', [
-    'voucher_code' => 'VC-8k2j9a',
-    'customer'     => 'Budi Santoso',
-    'amount'       => 5000,
-    'created_at'   => date('Y-m-d H:i:s'),
-]);
-
-// 3. Cari data dari file JSON
-$customerData = $json->find('transactions', 'customer', 'Budi Santoso');
-```
-
----
-
-## ⚡ Fitur Lanjutan Hotspot, Voucher Massal & PPPoE ISP Billing
-
-Tiga modul inti (`$ros->hotspot()`, `$ros->voucher()`, `$ros->pppoe()`) telah diperkaya dengan serangkaian metode praktis kelas produksi:
-
-### 1. Advanced Hotspot (`$ros->hotspot()`)
-```php
-// 1. Pantau traffic RX/TX dan bytes per user secara real-time
-$traffic = $ros->hotspot()->getUserTraffic('budi');
-// Hasil: ['uptime' => '2h15m', 'rx_human' => '12.4 MB', 'tx_human' => '105.8 MB', 'total_human' => '118.2 MB']
-
-// 2. Dapatkan 10 pengguna dengan konsumsi kuota terbesar (Top Downloaders)
-$topDownloaders = $ros->hotspot()->getTopDownloaders(10);
-
-// 3. Dapatkan daftar pengguna dengan waktu aktif terlama (Top Active Session)
-$topActive = $ros->hotspot()->getTopActiveTime(5);
-
-// 4. Perpanjang masa aktif / limit uptime user (+2 jam)
-$ros->hotspot()->extendUserTime('budi', '2h');
-
-// 5. Tambah kuota data user (+1 GB)
-$ros->hotspot()->extendUserData('budi', '1G'); // atau integer byte 1073741824
-
-// 6. Kunci akun Hotspot ke MAC address perangkat tertentu (Anti-Tethering / Anti-Kloning)
-$ros->hotspot()->lockUserToMac('budi', '00:1A:2B:3C:4D:5E');
-
-// 7. Buka kembali kunci MAC address
-$ros->hotspot()->unlockUserMac('budi');
-
-// 8. Ambil daftar IP lease DHCP khusus klien hotspot
-$leases = $ros->hotspot()->getHotspotDhcpLeases();
-```
-
-### 2. Advanced Voucher Engine (`$ros->voucher()`)
-```php
-// 1. Generate URL QR Code otomatis (Scan kamera langsung login tanpa ketik password)
-$qrUrl = $ros->voucher()->generateQrCodeUrl('VC-8k2j9a', 'pass123', 'http://wifi.cafe/login', 120);
-
-// 2. Render kartu voucher siap cetak (HTML Print Cards) lengkap dengan QR Code
-$kartuHtml = $ros->voucher()->renderPrintCards($vouchers, [
-    'title'    => 'HOTSPOT CAFE FREE WIFI',
-    'dns_name' => 'http://wifi.cafe/login',
-    'price'    => 'Rp 5.000 / 2 Jam',
-    'show_qr'  => true, // Otomatis tampilkan QR Code login
-]);
-
-// 3. Format Struk Printer Kasir Bluetooth Thermal 58mm / 80mm (ESC/POS Ready)
-$strukThermal = $ros->voucher()->renderThermalReceipt($voucher, [
-    'store_name' => 'WARKOP CYBER CAFE',
-    'address'    => 'Jl. Thamrin No. 45',
-    'login_url'  => 'http://wifi.cafe',
-]);
-// Kirim string $strukThermal langsung ke printer Bluetooth / USB Thermal POS!
-
-// 4. Laporan Penjualan & Keuangan Voucher Realtime
-$sales = $ros->voucher()->getSalesReport();
-/*
-Hasil: [
-    'total_vouchers'  => 100,
-    'active_vouchers' => 70,
-    'used_vouchers'   => 30,
-    'total_potential' => 500000,
-    'total_realized'  => 150000,
-    'realized_human'  => 'Rp 150.000'
-]
-*/
-
-// 5. Rekap Kinerja Berdasarkan Tag Batch
-$batchKafe = $ros->voucher()->getBatchSummary('batch-kafe-01');
-
-// 6. Export Voucher ke File CSV (Bisa langsung dibuka di Microsoft Excel)
-$csv = $ros->voucher()->exportToCsv('batch-kafe-01', __DIR__ . '/database/exports/vouchers.csv');
-
-// 7. Import Voucher Massal dari File CSV ke MikroTik & Database SQL
-$importRes = $ros->voucher()->importFromCsv(__DIR__ . '/database/exports/vouchers.csv', 'default');
-```
-
-### 3. Advanced PPPoE & ISP Billing Management (`$ros->pppoe()`)
-```php
-// 1. Pantau traffic live RX/TX, IP address, Caller ID ONT/Modem pelanggan
-$session = $ros->pppoe()->getUserTraffic('client01');
-
-// 2. Kunci akun PPPoE ke MAC address Modem/ONT pelanggan (Anti-Sharing ISP)
-$ros->pppoe()->bindCallerId('client01', '00:E0:4C:53:44:58');
-$ros->pppoe()->unbindCallerId('client01');
-
-// 3. Tetapkan IP Statis / Publik untuk pelanggan dedicated
-$ros->pppoe()->assignStaticIp('client01', '10.10.10.50', '10.10.10.1');
-
-// 4. Pastikan Profile ISOLIR sudah siap di MikroTik
-$ros->pppoe()->ensureIsolateProfile('ISOLIR', '10.0.99.1', '10.0.99.2-10.0.99.254', '128k/128k');
-
-// 5. Catat tanggal jatuh tempo tagihan (Due Date) ke Database SQL & Komentar MikroTik
-$ros->pppoe()->setPppoeDueDate('client01', '2026-11-20', 'INV-2026-001');
-
-// 6. Deteksi otomatis semua pelanggan yang terlambat bayar / jatuh tempo
-$overdueCustomers = $ros->pppoe()->getOverdueCustomers();
-
-// 7. Isolir Massal Otomatis Pelanggan Nunggak (Ganti Profile ke ISOLIR + Kick Sesi Aktif)
-// Sangat ideal dijalankan pada skrip cron harian:
-$hasilIsolir = $ros->pppoe()->autoIsolateOverdue('ISOLIR');
-
-// 8. Buka isolir pelanggan saat sudah membayar tagihan (Re-aktivasi)
-$ros->pppoe()->unsuspendCustomer('client01', 'default');
-```
-
----
-
-## 🛠️ File Operasional Terpisah: Finder, Setter, Getter, Printer, Remover, Toggler
-
-Seluruh fungsi operasional dipisahkan ke dalam file PHP masing-masing di [`src/Actions/`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/) agar kode tetap rapi, terstruktur, tidak ada fungsi ganda/dobel nama, dan memiliki kapabilitas superpower yang mudah diakali:
-
-| File Action | Lokasi File | Metode Utama |
+| Action Class | Akses Metode | Fungsi & Kemampuan Utama |
 | :--- | :--- | :--- |
-| **`Finder`** | [`src/Actions/Finder.php`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/Finder.php) | `nameToId()`, `findname_toId()`, `byName()`, `byId()`, `byMac()`, `byIp()`, `where()`, `first()`, `exists()` |
-| **`Setter`** | [`src/Actions/Setter.php`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/Setter.php) | `limit()` / `setLimit()`, `comment()` / `setComment()`, `email()` / `setEmail()`, `name()` / `setName()`, `password()`, `profile()`, `property()` |
-| **`Getter`** | [`src/Actions/Getter.php`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/Getter.php) | `get()`, `getByName()`, `getById()`, `getValue()`, `count()`, `exists()`, `pluck()` |
-| **`Printer`** | [`src/Actions/Printer.php`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/Printer.php) | `print()`, `printColumns()`, `printDetail()`, `printJson()`, `paginate()` |
-| **`Remover`** | [`src/Actions/Remover.php`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/Remover.php) | `remove()`, `byName()`, `byId()`, `where()`, `byComment()`, `byProfile()`, `all()` |
-| **`Toggler`** | [`src/Actions/Toggler.php`](file:///data/data/com.termux/files/home/project-routeros/src/Actions/Toggler.php) | `enable()`, `disable()`, `toggle()`, `resetCounter()` |
+| **`Creator`** | `$ros->create()` / `$ros->creator()` | `create()`, `add()`, `createIfNotExists()`, `batchCreate()`, `ipAddress()`, `hotspotUser()`, `pppoeSecret()`, `queueSimple()`, `firewallRule()`, `natRule()`, `ptmpAccessList()`, `vlan()` |
+| **`Writer`** | `$ros->write()` / `$ros->writer()` | `write()`, `raw()`, `terminal()`, `batch()`, `runScript()`, `executeScriptSource()` |
+| **`Reader`** | `$ros->read()` / `$ros->reader()` | `read()`, `first()`, `monitorTraffic()`, `stats()`, `streamWireless()` |
+| **`Finder`** | `$ros->find()` / `$ros->finder()` | `nameToId()`, `findname_toId()`, `byName()`, `byId()`, `byMac()`, `byIp()`, `where()`, `first()`, `exists()` |
+| **`Setter`** | `$ros->set()` / `$ros->setter()` | `set()`, `limit()`, `comment()`, `email()`, `name()`, `password()`, `profile()`, `property()` |
+| **`Getter`** | `$ros->get()` / `$ros->getter()` | `get()`, `getByName()`, `getById()`, `getValue()`, `count()`, `exists()`, `pluck()` |
+| **`Printer`** | `$ros->print()` / `$ros->printer()` | `print()`, `printColumns()`, `printDetail()`, `printJson()`, `paginate()` |
+| **`Remover`** | `$ros->remove()` / `$ros->remover()` | `remove()`, `byName()`, `byId()`, `where()`, `byComment()`, `byProfile()`, `all()` |
+| **`Toggler`** | `$ros->toggle()` / `$ros->toggler()` | `enable()`, `disable()`, `toggle()`, `resetCounter()` |
 
-#### Contoh Penggunaan Action Terpisah:
+#### Contoh Penggunaan Action Lengkap:
 ```php
-// 1. Finder: Cari .id RouterOS dari nama
-$userId = $ros->find()->nameToId('budi', '/ip/hotspot/user'); // Hasil: '*1A'
-$item = $ros->find()->byMac('00:1A:2B:3C:4D:5E');
+// 1. CREATOR: Tambah entitas baru
+$ros->create()->ipAddress('192.168.50.1/24', 'ether2', 'Gateway Hotspot');
+$ros->create()->hotspotUser('siswa01', 'sandi123', 'paket-2mbps');
+$ros->create()->queueSimple('Limit-Siswa', '192.168.50.0/24', '10M/10M');
 
-// 2. Setter: Modifikasi granular tanpa memuat seluruh objek
-$ros->set()->limit('budi', '2h', '1G');
-$ros->set()->comment('budi', 'Langganan VIP');
-$ros->set()->email('budi', 'budi@gmail.com');
-$ros->set()->name('budi', 'budi_baru'); // Rename item aman
-$ros->set()->property('/ip/firewall/nat', '*1', 'comment', 'NAT Ether1 Internet');
+// 2. READER: Baca data & statistik traffic
+$users = $ros->read()->read('/ip/hotspot/user', ['profile' => 'default']);
+$traffic = $ros->read()->stats('ether1'); // rx_bytes, tx_bytes, packets, drops
 
-// 3. Getter: Ambil satu nilai properti tertentu saja (Sangat hemat memori router)
-$userUptime = $ros->get()->getValue('/ip/hotspot/user', 'budi_baru', 'uptime');
-$userCount  = $ros->get()->count('/ip/hotspot/user', ['profile' => 'default']);
+// 3. WRITER: Eksekusi Terminal CLI raw atau script dinamis
+$cliOutput = $ros->write()->terminal('/interface wireless print detail');
 
-// 4. Printer: Ambil kolom spesifik & Paginasi otomatis
-$columnsOnly = $ros->print()->printColumns('/ip/hotspot/user', ['name', 'profile', 'limit-uptime']);
-$pagedUsers  = $ros->print()->paginate('/ip/hotspot/user', 1, 15);
+// 4. FINDER: Cari internal .id dari nama
+$id = $ros->findNameToId('siswa01', '/ip/hotspot/user'); // Hasil: '*2B'
 
-// 5. Remover: Hapus berdasarkan kriteria
-$ros->remove()->byName('tester', '/ip/hotspot/user');
-$ros->remove()->where('/ip/hotspot/user', ['comment' => 'expired']);
+// 5. SETTER: Modifikasi granular tanpa load seluruh objek
+$ros->setLimit('siswa01', '3h', '2G');           // Set uptime + byte limit
+$ros->setComment('siswa01', 'Siswa Kelas XII');  // Set comment
+$ros->setEmail('siswa01', 'siswa@sekolah.sch.id'); // Set email
+$ros->setName('siswa01', 'siswa_baru');          // Rename aman
 
-// 6. Toggler: Toggle status aktif / non-aktif
-$ros->toggle()->toggle('/ip/hotspot/user', 'budi_baru');
+// 6. TOGGLER: Disable / Enable dalam 1 baris
+$ros->toggle()->toggle('/ip/hotspot/user', 'siswa_baru');
 ```
 
 ---
 
-## 🔌 Dukungan Multi-Platform (PHP Manual, Laravel, CodeIgniter, JS SDK, CLI)
+## 📡 Multi-PTMP (Point-to-Multipoint) Wireless Management
 
-Framework ini dirancang universal dan dapat langsung digunakan pada segala jenis arsitektur proyek:
+Modul khusus [`$ros->ptmp()`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/Ptmp.php) dirancang untuk operator Tower BTS WISP, RT-RW Net, dan Distribusi Wireless Multi-Klien:
 
-### 1. PHP Native / Manual
 ```php
-require 'vendor/autoload.php';
-use RouterOSFramework\Core\RouterOS;
+// 1. Deteksi hardware wireless router (Legacy, NV2, 60GHz w60g, atau WiFiWave2)
+$hw = $ros->ptmp()->detectHardware();
 
-$ros = RouterOS::withConfig('config.php');
-$ros->setLimit('budi', '2h');
-$ros->setComment('budi', 'VIP RT/RW Net');
-```
-
-### 2. Laravel (8.x, 9.x, 10.x, 11.x, dst)
-Otomatis terdaftar melalui **Laravel Package Auto-Discovery**:
-```php
-use RouterOS;
-
-class HotspotController extends Controller
-{
-    public function updateLimit(Request $request)
-    {
-        RouterOS::setLimit($request->user, $request->limit);
-        RouterOS::setComment($request->user, $request->comment);
-        return response()->json(['status' => 'success']);
-    }
+// 2. Ambil daftar seluruh CPE station yang terhubung beserta analisis sinyal lengkap
+$stations = $ros->ptmp()->getStations('wlan1');
+foreach ($stations as $cpe) {
+    echo "MAC: {$cpe['mac_address']} | Sinyal: {$cpe['signal_strength']} | CCQ: {$cpe['ccq_tx']} | Jarak: {$cpe['distance']} | Status: {$cpe['health']}\n";
 }
+
+// 3. Ringkasan Kesehatan Jaringan PTMP (Health Index)
+$metrics = $ros->ptmp()->getStationQualityMetrics('wlan1');
+// ['total_stations' => 24, 'average_signal' => '-64 dBm', 'degraded_count' => 1, 'health_percentage' => 95.8]
+
+// 4. Manajemen Access-List (Whitelist MAC dengan batasan toleransi sinyal agar radio tidak drop)
+$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', 'wlan1', '-80..120', 'Pelanggan Rumah Bpk Joko', true);
+
+// 5. Kick / Disconnect Station CPE tertentu
+$ros->ptmp()->kickStation('00:0C:42:AA:BB:CC');
+
+// 6. Set Frekuensi & Channel Width AP Tower
+$ros->ptmp()->setChannel('wlan1', 5200, '5ghz-only-n', '20/40mhz-XX');
+
+// 7. Konfigurasi Protokol MikroTik NV2 TDMA (Solusi Hidden Node Problem)
+$ros->ptmp()->setProtocol('wlan1', 'nv2');
+$ros->ptmp()->setNv2Config('wlan1', [
+    'nv2-cell-radius'      => 30, // 30 km
+    'nv2-tdma-period-size' => 2,  // 2 ms
+    'nv2-security'         => 'key-management',
+    'nv2-preshared-key'    => 'KunciRahasiaNV2Tower!',
+]);
 ```
 
-### 3. CodeIgniter (CI3 & CI4)
-Gunakan library [`RouterOSLibrary.php`](file:///data/data/com.termux/files/home/project-routeros/src/Integrations/CodeIgniter/RouterOSLibrary.php):
-```php
-// CodeIgniter 3:
-$this->load->library('RouterOSLibrary');
-$this->routeroslibrary->setComment('budi', 'VIP');
+---
 
-// CodeIgniter 4:
-$ros = new \RouterOSFramework\Integrations\CodeIgniter\RouterOSLibrary();
-$users = $ros->hotspot()->getUsers();
+## 🔌 Dukungan Multi-Platform & Bahasa (PHP, Python, JS, CLI, JSON)
+
+### 1. Python SDK ([`routeros.py`](file:///data/data/com.termux/files/home/project-routeros/routeros.py))
+Library Python 3 mandiri tanpa dependensi tambahan (*zero external dependencies*):
+
+```python
+from routeros import RouterOS
+
+# Koneksi langsung via REST HTTP/HTTPS (RouterOS v7+)
+ros = RouterOS(host="192.168.88.1", user="admin", password="password", protocol="rest")
+
+# Atau koneksi via Web API endpoint
+ros = RouterOS.via_api("http://localhost/project-routeros/api.php")
+
+# Full CRUD Actions
+ros.create("/ip/address", {"address": "10.10.10.1/24", "interface": "ether2"})
+users = ros.read("/ip/hotspot/user")
+ros.set("/ip/hotspot/user", "budi", {"limit-uptime": "2h", "comment": "VIP"})
+ros.remove("/ip/hotspot/user", "budi")
+
+# PTMP Wireless
+stations = ros.ptmp.get_stations()
+ros.ptmp.kick_station("00:0C:42:AA:BB:CC")
+ros.ptmp.set_channel("wlan1", 5180)
+
+# Hotspot & PPPoE
+ros.hotspot.set_limit("budi", limit_uptime="2h")
+ros.pppoe.suspend("client01")
 ```
 
-### 4. Client-side JavaScript SDK ([`assets/js/routeros.js`](file:///data/data/com.termux/files/home/project-routeros/assets/js/routeros.js))
-Frontend web (Vue, React, Svelte, atau HTML polos) dapat langsung berinteraksi dengan RouterOS melalui Promises / `async / await`:
+Eksekusi via terminal:
+```bash
+python routeros.py status
+python routeros.py ptmp stations
+python routeros.py read /ip/hotspot/user
+```
+
+---
+
+### 2. Client-side JavaScript SDK ([`assets/js/routeros.js`](file:///data/data/com.termux/files/home/project-routeros/assets/js/routeros.js))
+Mendukung Vanilla JS, React, Vue, Svelte, dan Node.js:
+
 ```html
 <script src="assets/js/routeros.js"></script>
 <script>
-const client = new RouterOSClient({ endpoint: '/api.php' });
+const client = new RouterOSClient({ endpoint: '/api.php', protocol: 'rest' });
 
 async function init() {
-    // Ambil data users
+    // 1. Ambil data users & PTMP
     const users = await client.hotspot.getUsers();
+    const stations = await client.ptmp.getStations();
     
-    // Ubah limit, komentar, atau isolir langsung dari JavaScript:
+    // 2. Ubah limit, kick, isolir langsung dari JS:
     await client.hotspot.setLimit('budi', '2h');
-    await client.hotspot.setComment('budi', 'VIP Client');
+    await client.ptmp.kickStation('00:0C:42:AA:BB:CC');
     await client.pppoe.suspend('client01');
+
+    // 3. Generic CRUD
+    await client.create('/ip/address', { address: '10.0.0.1/24', interface: 'ether2' });
+    const data = await client.read('/system/resource');
 }
 init();
 </script>
 ```
 
-### 5. Terminal CLI Console ([`console.php`](file:///data/data/com.termux/files/home/project-routeros/console.php))
-```bash
-php console.php setlimit budi 2h 1G
-php console.php setcomment budi "Langganan VIP"
-php console.php setemail budi budi@gmail.com
-php console.php setname budi budi_baru
-php console.php findid budi
-php console.php suspend client01
-php console.php unsuspend client01
-```
-
-### 6. Deteksi & Dukungan RouterOS v6.xx - v7.xx
-```php
-$isV7 = $ros->system()->isV7(); // true jika RouterOS v7.xx
-$isV6 = $ros->system()->isV6(); // true jika RouterOS v6.xx
-$ver  = $ros->system()->getVersion(); // e.g. "7.15.2"
-```
-
 ---
 
-## 🔥 Modul Tambahan Powerhouse
-
-### 1. Modul Backup & Export (`$ros->backup()`)
+### 3. Laravel Framework (8.x, 9.x, 10.x, 11.x+)
+Otomatis terdaftar melalui Laravel Package Auto-Discovery:
 ```php
-// Buat binary backup di storage MikroTik
-$ros->backup()->saveBackup('backup-mingguan', 'passwordEnkripsi123');
+use RouterOS;
 
-// Export konfigurasi script .rsc yang rapi (compact & hide-sensitive)
-$ros->backup()->exportConfig('config-router-hq');
-
-// Lihat daftar file di storage router
-$files = $ros->backup()->getFiles();
-```
-
-### 2. Modul Network Tools (`$ros->tool()`)
-```php
-// Wake-on-LAN: Nyalakan PC/Server kantor dari jarak jauh
-$ros->tool()->wakeOnLan('AA:BB:CC:DD:EE:FF', 'ether2');
-
-// Kirim Email Notifikasi langsung dari MikroTik
-$ros->tool()->sendEmail('admin@perusahaan.com', 'Router Alert', 'Suhu router normal.');
-
-// Kirim SMS via Modem USB/LTE attached
-$ros->tool()->sendSms('08123456789', 'Token listrik kantor hampir habis!');
-
-// Traceroute & IP Scan
-$hops = $ros->tool()->traceroute('1.1.1.1');
-$activeIps = $ros->tool()->ipScan('ether1', '5s');
-```
-
-### 3. Modul Wireless Wi-Fi (`$ros->wireless()`)
-```php
-// Lihat perangkat yang sedang terhubung ke Wi-Fi lengkap dengan sinyal dBm
-$wifiClients = $ros->wireless()->getConnectedClients();
-
-// Ganti password Wi-Fi WPA2
-$ros->wireless()->setWifiPassword('default', 'PasswordBaru2026!');
-
-// Ganti nama SSID Wi-Fi
-$ros->wireless()->setSsid('wlan1', 'FREE-WIFI-CAFE');
-
-// Kick perangkat yang terhubung ke Wi-Fi berdasarkan MAC
-$ros->wireless()->disconnectClient('00:11:22:33:44:55');
-```
-
-### 4. Modul VPN & Tunneling (`$ros->vpn()`)
-```php
-// Lihat peer WireGuard
-$peers = $ros->vpn()->getWireguardPeers();
-
-// Tambah Peer WireGuard baru
-$ros->vpn()->addWireguardPeer('wireguard1', 'PublicKeyBase64...', '10.0.0.2/32', 'vpn.kantor.com', 51820);
-
-// Status VPN Server (L2TP, OpenVPN, SSTP)
-$l2tp = $ros->vpn()->getL2tpServer();
-$ovpn = $ros->vpn()->getOvpnServer();
-```
-
-### 5. Modul DNS Filter & AdBlocker (`$ros->dnsFilter()`)
-```php
-// Blokir domain iklan atau situs berbahaya via DNS redirect
-$ros->dnsFilter()->blockDomain('ads.google.com', '0.0.0.0', 'Blokir Iklan');
-
-// Import daftar ribuan domain blocklist (Hosts file)
-$ros->dnsFilter()->importHostsBlocklist(['doubleclick.net', 'adservice.google.com']);
-
-// Flush DNS Cache
-$ros->dnsFilter()->flushCache();
-```
-
----
-
-## 💳 Payment Gateway & Auto Voucher (`$ros->billing()`)
-
-Integrasi pembayaran otomatis untuk Tripay, Midtrans, Duitku, Xendit, dan QRIS:
-
-```php
-$billing = $ros->billing();
-
-// Terima webhook POST dari payment gateway
-$rawInput = file_get_contents('php://input');
-$payload = json_decode($rawInput, true);
-
-// Proses webhook & otomatis generate voucher jika status PAID
-$result = $billing->handleWebhook('tripay', $payload, [
-    'PAKET-2JAM' => ['profile' => 'default', 'limit-uptime' => '2h', 'price' => 5000],
-    'PAKET-1HARI' => ['profile' => 'default', 'limit-uptime' => '24h', 'price' => 15000],
-]);
-
-if ($result['success']) {
-    // Teks WhatsApp siap kirim ke nomor pembeli:
-    echo $result['wa_message'];
+class RouterController extends Controller
+{
+    public function index()
+    {
+        $users = RouterOS::hotspot()->getUsers();
+        $stations = RouterOS::ptmp()->getStations();
+        RouterOS::setLimit('budi', '2h');
+        return response()->json(['users' => $users, 'stations' => $stations]);
+    }
 }
 ```
 
 ---
 
-## 🤖 Integrasi Bot Telegram & WhatsApp
-
-Modul [`BotHandler`](file:///data/data/com.termux/files/home/project-routeros/src/Modules/BotHandler.php) dan webhook [`bot_webhook.php`](file:///data/data/com.termux/files/home/project-routeros/bot_webhook.php):
-
+### 4. CodeIgniter (CI3 & CI4)
+Gunakan library [`RouterOSLibrary.php`](file:///data/data/com.termux/files/home/project-routeros/src/Integrations/CodeIgniter/RouterOSLibrary.php):
 ```php
-$bot = $ros->bot();
+// CodeIgniter 3:
+$this->load->library('RouterOSLibrary');
+$this->routeroslibrary->setLimit('budi', '2h');
 
-// Terima pesan perintah apa pun dari chat:
-$reply = $bot->handle('/status');
-echo $reply['text']; // Balasan berformat rapi dengan emoji
-
-// Perintah yang didukung:
-// - /help                        -> Menu bantuan perintah
-// - /status                      -> Laporan resource CPU, RAM, & user
-// - /traffic                     -> Pantau trafik bandwidth live
-// - /vc [jumlah] [profil] [jam]  -> Buat voucher Hotspot instan
-// - /kick [username]             -> Putuskan user online
-// - /bypass [mac] [nama]         -> Bypass perangkat tanpa login
+// CodeIgniter 4:
+$ros = new \RouterOSFramework\Integrations\CodeIgniter\RouterOSLibrary();
+$stations = $ros->ptmp()->getStations();
 ```
 
 ---
 
-## 💻 Terminal CLI Console Tool
-
-Jalankan perintah langsung dari Terminal atau Termux:
-
+### 5. Terminal CLI Console ([`console.php`](file:///data/data/com.termux/files/home/project-routeros/console.php))
 ```bash
-# Cek status resource & user router
 php console.php status
-
-# Buat 10 voucher Hotspot paket 2 jam
-php console.php voucher 10 default 2h
-
-# Putuskan sesi user aktif
-php console.php kick budi
-
-# Bypass perangkat MAC tanpa login
-php console.php bypass 00:11:22:33:44:55 "Smart TV"
-
-# Buat binary backup di storage router
-php console.php backup backup-bulanan
-
-# Nyalakan PC kantor via Wake-on-LAN
-php console.php wol AA:BB:CC:DD:EE:FF ether1
-
-# Eksekusi custom RouterOS command
-php console.php comm "/ip/address/print"
+php console.php protocol rest                      # Beralih protokol
+php console.php ptmp stations                      # Pantau sinyal CPE PTMP
+php console.php ptmp metrics                       # Health metrics PTMP
+php console.php ptmp kick 00:0C:42:AA:BB:CC        # Kick station CPE
+php console.php ptmp channel wlan1 5180            # Ganti frekuensi
+php console.php setlimit budi 2h 1G                # Ubah limit
+php console.php setcomment budi "VIP RT/RW Net"
+php console.php setname budi budi_baru
+php console.php suspend client01                   # Isolir PPPoE
+php console.php unsuspend client01                 # Buka isolir
+php console.php create /ip/address address=10.0.0.1/24 interface=ether2
+php console.php terminal "/interface wireless print detail"
 ```
 
 ---
@@ -662,37 +400,43 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | Method | Endpoint | Keterangan |
 | :--- | :--- | :--- |
 | `GET` | `/api.php?action=status` | Status resource, identitas router, dan metrik hotspot |
+| `GET` | `/api.php?action=ptmp_stations` | Daftar CPE Station PTMP terhubung & sinyal dBm |
+| `GET` | `/api.php?action=ptmp_metrics` | Analisis kualitas link kesehatan PTMP |
+| `POST` | `/api.php?action=ptmp_kick` | Kick station CPE tertentu |
+| `POST` | `/api.php?action=ptmp_set_channel` | Ganti frekuensi AP Tower PTMP |
+| `POST` | `/api.php?action=ptmp_set_protocol` | Ganti mode wireless (nv2, nstreme, 802.11) |
 | `GET` | `/api.php?action=users` | Daftar pengguna Hotspot |
 | `GET` | `/api.php?action=active` | Sesi aktif dengan konsumsi bandwidth real-time |
-| `GET` | `/api.php?action=hosts` | Daftar host/perangkat terhubung |
-| `GET` | `/api.php?action=vouchers` | Daftar voucher dari Database SQL/JSON |
-| `POST` | `/api.php?action=generate_vouchers` | Generate batch voucher baru |
+| `POST` | `/api.php?action=generate_voucher` | Generate batch voucher baru |
 | `POST` | `/api.php?action=kick` | Putuskan koneksi user aktif |
-| `POST` | `/api.php?action=bypass` | Bypass MAC perangkat tanpa login |
-| `GET` | `/api.php?action=traffic` | Pantau trafik interface real-time |
 | `POST` | `/api.php?action=find_id` | Cari internal .id dari nama item |
 | `POST` | `/api.php?action=set_limit` | Ubah batas uptime / bytes akun hotspot |
 | `POST` | `/api.php?action=set_comment` | Ubah komentar akun |
-| `POST` | `/api.php?action=set_email` | Ubah email pengguna |
 | `POST` | `/api.php?action=set_name` | Ganti nama / rename item |
 | `POST` | `/api.php?action=pppoe_suspend` | Isolir pelanggan PPPoE |
 | `POST` | `/api.php?action=pppoe_unsuspend` | Buka isolir pelanggan PPPoE |
+| `POST` | `/api.php?action=create` | Tambah record dinamis pada path apapun |
+| `POST` | `/api.php?action=read` | Baca/query fleksibel pada path apapun |
 | `POST` | `/api.php?action=generic_set` | Modifikasi properti dinamis pada path apapun |
-| `POST` | `/api.php?action=generic_get` | Query fleksibel pada path apapun |
 | `POST` | `/api.php?action=generic_remove` | Hapus item pada path apapun |
+| `POST` | `/api.php?action=terminal` | Eksekusi Terminal CLI raw command |
 
 ---
 
 ## 📋 Cheat Sheet Modul Lengkap
 
-| Modul | Metode Populer |
+| Modul | Metode Utama |
 | :--- | :--- |
+| **`create()`** | `create()`, `add()`, `createIfNotExists()`, `batchCreate()`, `ipAddress()`, `hotspotUser()`, `pppoeSecret()`, `queueSimple()`, `firewallRule()`, `natRule()`, `ptmpAccessList()`, `vlan()` |
+| **`write()`** | `write()`, `raw()`, `terminal()`, `batch()`, `runScript()`, `executeScriptSource()` |
+| **`read()`** | `read()`, `first()`, `monitorTraffic()`, `stats()`, `streamWireless()` |
 | **`find()`** | `nameToId()`, `findname_toId()`, `byName()`, `byId()`, `byMac()`, `byIp()`, `where()`, `first()`, `exists()` |
 | **`set()`** | `limit()`, `setLimit()`, `comment()`, `setComment()`, `email()`, `setEmail()`, `name()`, `setName()`, `password()`, `profile()`, `property()` |
 | **`get()`** | `get()`, `getByName()`, `getById()`, `getValue()`, `count()`, `exists()`, `pluck()` |
 | **`print()`** | `print()`, `printColumns()`, `printDetail()`, `printJson()`, `paginate()` |
 | **`remove()`** | `remove()`, `byName()`, `byId()`, `where()`, `byComment()`, `byProfile()`, `all()` |
 | **`toggle()`** | `enable()`, `disable()`, `toggle()`, `resetCounter()` |
+| **`ptmp()`** | `detectHardware()`, `getStations()`, `getStationQualityMetrics()`, `getAccessList()`, `addAccessList()`, `removeAccessList()`, `getConnectList()`, `addConnectList()`, `kickStation()`, `setProtocol()`, `setNv2Config()`, `setChannel()`, `setTxPower()`, `scanFrequencies()` |
 | **`hotspot()`** | `getUsers()`, `addUserDetailed()`, `setUser()`, `setLimit()`, `setComment()`, `setEmail()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `getUserTraffic()`, `getTopDownloaders()`, `getTopActiveTime()`, `extendUserTime()`, `extendUserData()`, `lockUserToMac()`, `unlockUserMac()`, `getHotspotDhcpLeases()`, `getActiveTraffic()`, `disconnectUser()`, `bypassDevice()`, `blockDevice()`, `addWalledGardenDomain()`, `removeExpiredUsers()`, `syncToDatabase()` |
 | **`voucher()`** | `generate()`, `generateAndSave()`, `generateQrCodeUrl()`, `getFromDb()`, `markUsed()`, `deleteBatch()`, `renderPrintCards()`, `renderThermalReceipt()`, `getSalesReport()`, `getBatchSummary()`, `exportToCsv()`, `importFromCsv()` |
 | **`pppoe()`** | `getUsers()`, `addUser()`, `setUser()`, `setComment()`, `setPassword()`, `setProfile()`, `setName()`, `findNameToId()`, `enableUser()`, `disableUser()`, `removeUser()`, `getActive()`, `getUserTraffic()`, `getTopActiveTime()`, `disconnectUser()`, `suspendCustomer()`, `unsuspendCustomer()`, `bindCallerId()`, `unbindCallerId()`, `assignStaticIp()`, `setPppoeDueDate()`, `getOverdueCustomers()`, `autoIsolateOverdue()`, `ensureIsolateProfile()`, `syncToDatabase()` |
@@ -700,17 +444,6 @@ File [`api.php`](file:///data/data/com.termux/files/home/project-routeros/api.ph
 | **`queue()`** | `getAll()`, `add()`, `limitBandwidth()`, `remove()` |
 | **`interface()`** | `getAll()`, `getEthernet()`, `getBridges()`, `monitorTraffic()`, `enable()`, `disable()` |
 | **`system()`** | `getResources()`, `getIdentity()`, `setIdentity()`, `getClock()`, `getLogs()`, `ping()`, `reboot()`, `getVersion()`, `getMajorVersion()`, `isV7()`, `isV6()` |
-| **`ip()`** | `getAddresses()`, `addAddress()`, `getPools()`, `getDhcpLeases()`, `makeDhcpLeaseStatic()`, `getArpTable()` |
-| **`backup()`** | `saveBackup()`, `exportConfig()`, `getFiles()`, `removeFile()` |
-| **`tool()`** | `wakeOnLan()`, `sendEmail()`, `sendSms()`, `traceroute()`, `ipScan()`, `bandwidthTest()` |
-| **`wireless()`** | `getConnectedClients()`, `setWifiPassword()`, `setSsid()`, `disconnectClient()` |
-| **`vpn()`** | `getWireguardPeers()`, `addWireguardPeer()`, `removeWireguardPeer()`, `getL2tpServer()` |
-| **`billing()`** | `handleWebhook()`, `generateVoucherForPayment()` |
-| **`dnsFilter()`** | `blockDomain()`, `unblockDomain()`, `flushCache()`, `importHostsBlocklist()` |
-| **`bot()`** | `handle($message, $sender)` |
-| **`db()`** | `insert()`, `update()`, `delete()`, `select()`, `find()`, `count()`, `log()`, `query()`, `fetchAll()` |
-| **`json()`** | `all()`, `get()`, `set()`, `push()`, `find()`, `where()`, `deleteWhere()`, `clear()` |
-| **`cache()`** | `get()`, `set()`, `has()`, `remember()`, `forget()`, `clear()` |
 | **`ip()`** | `getAddresses()`, `addAddress()`, `getPools()`, `getDhcpLeases()`, `makeDhcpLeaseStatic()`, `getArpTable()` |
 | **`backup()`** | `saveBackup()`, `exportConfig()`, `getFiles()`, `removeFile()` |
 | **`tool()`** | `wakeOnLan()`, `sendEmail()`, `sendSms()`, `traceroute()`, `ipScan()`, `bandwidthTest()` |

@@ -5,7 +5,9 @@
  * =========================================================================
  *
  * Professional, clean reference demonstrating modern MikroTik RouterOS
- * management with SQL Database, JSON storage, and dedicated action classes.
+ * management with Multi-Protocol Transports (API, REST, SSH, Telnet),
+ * Full Operational Actions (CRUD), Point-to-Multipoint (PTMP) Wireless,
+ * SQL Database, and JSON Flat-File storage.
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -17,6 +19,7 @@ use RouterOSFramework\Core\RouterOSAPI;
 $ros = RouterOS::withConfig('config.php');
 
 echo "⚡ Project RouterOS Framework Loaded Successfully\n";
+echo "🌐 Active Protocol: " . strtoupper($ros->getProtocol()) . "\n";
 
 if (!$ros->isConnected()) {
     echo "ℹ️  Status Router: Offline (Sesuaikan IP & akun router pada 'config.php' untuk pengujian live)\n";
@@ -25,103 +28,107 @@ if (!$ros->isConnected()) {
 
 /*
 |--------------------------------------------------------------------------
-| 1. DEDICATED SUPERPOWER ACTIONS (Finder, Setter, Getter, Printer)
+| 1. FULL OPERATIONAL ACTIONS (Creator, Writer, Reader, Finder, Setter, Getter, Remover, Toggler)
 |--------------------------------------------------------------------------
-| File class terpisah di src/Actions/ yang bersih, tanpa nama dobel.
+| File class terpisah di src/Actions/ yang bersih, modular, tanpa dobel nama.
 */
 
 if ($ros->isConnected()) {
-    // A. Finder: Temukan ID dari nama atau kriteria
+    // A. Creator: Buat IP, User Hotspot, Simple Queue secara terstruktur
+    $ros->create()->ipAddress('192.168.100.1/24', 'ether2', 'Gateway LAN 2');
+    $ros->create()->queueSimple('Limit-Kantor', '192.168.100.0/24', '20M/20M');
+
+    // B. Finder: Temukan ID dari nama atau kriteria
     $id = $ros->findNameToId('budi', '/ip/hotspot/user');
 
-    // B. Setter: Ubah limit, komentar, email, nama (rename)
+    // C. Setter: Ubah limit, komentar, email, nama (rename)
     $ros->setLimit('budi', '2h', '1G');           // Set uptime + byte limit
     $ros->setComment('budi', 'Pelanggan VIP');     // Set comment
     $ros->setEmail('budi', 'budi@gmail.com');      // Set email
     $ros->setName('budi', 'budi_baru');            // Rename item aman
 
-    // C. Getter & Printer: Paginasi dan seleksi kolom spesifik
+    // D. Reader & Getter: Paginasi dan seleksi data
     $totalUsers = $ros->get()->count('/ip/hotspot/user');
     $page1      = $ros->print()->paginate('/ip/hotspot/user', 1, 10);
 
-    // D. Toggler: Toggle status on/off dalam 1 baris
+    // E. Writer: Eksekusi command raw atau Terminal CLI
+    $termOutput = $ros->write()->terminal('/interface wireless print detail');
+
+    // F. Toggler: Toggle status on/off dalam 1 baris
     $ros->toggle()->toggle('/ip/hotspot/user', 'budi_baru');
 } else {
-    echo "🔹 [Action Setter] \$ros->setLimit('budi', '2h', '1G');\n";
-    echo "🔹 [Action Setter] \$ros->setComment('budi', 'VIP RT/RW Net');\n";
-    echo "🔹 [Action Setter] \$ros->setEmail('budi', 'budi@gmail.com');\n";
-    echo "🔹 [Action Setter] \$ros->setName('budi', 'budi_baru');\n";
-    echo "🔹 [Action Finder] \$id = \$ros->findNameToId('budi');\n";
+    echo "🔹 [Action Creator] \$ros->create()->ipAddress('192.168.100.1/24', 'ether2');\n";
+    echo "🔹 [Action Creator] \$ros->create()->queueSimple('Limit-Kantor', '192.168.100.0/24', '20M/20M');\n";
+    echo "🔹 [Action Setter]  \$ros->setLimit('budi', '2h', '1G');\n";
+    echo "🔹 [Action Setter]  \$ros->setComment('budi', 'VIP RT/RW Net');\n";
+    echo "🔹 [Action Setter]  \$ros->setEmail('budi', 'budi@gmail.com');\n";
+    echo "🔹 [Action Setter]  \$ros->setName('budi', 'budi_baru');\n";
+    echo "🔹 [Action Finder]  \$id = \$ros->findNameToId('budi');\n";
+    echo "🔹 [Action Reader]  \$data = \$ros->read()->read('/ip/hotspot/user');\n";
+    echo "🔹 [Action Writer]  \$output = \$ros->write()->terminal('/system resource print');\n";
 }
 
 /*
 |--------------------------------------------------------------------------
-| 2. HOTSPOT & VOUCHER ENGINE
+| 2. MULTI-PROTOCOL TRANSPORTS (API, REST v7+, SSH CLI, TELNET CLI, AUTO)
+|--------------------------------------------------------------------------
+| Bebas dependensi monoton: bisa ganti protokol sewaktu-waktu.
+*/
+echo "\n--- Multi-Protocol Transports ---\n";
+echo "🔹 [REST Native v7]  \$ros->useRest();   // Port 80/443 Native HTTP/HTTPS JSON\n";
+echo "🔹 [SSH Terminal]    \$ros->useSsh();    // Port 22 SSH CLI\n";
+echo "🔹 [Telnet Socket]   \$ros->useTelnet(); // Port 23 Raw Socket Telnet\n";
+echo "🔹 [API Socket]      \$ros->useApi();    // Port 8728 RouterOS API Binary\n";
+echo "🔹 [Auto Detect]     \$ros->useAuto();   // Auto-detect port terbuka\n";
+
+/*
+|--------------------------------------------------------------------------
+| 3. MULTI-PTMP (POINT-TO-MULTIPOINT) WIRELESS MANAGEMENT
+|--------------------------------------------------------------------------
+| Mendukung 802.11, NV2 TDMA, Nstreme, 60GHz (w60g), dan WiFiWave2/WiFi 6.
+*/
+echo "\n--- Multi-PTMP Wireless Management ---\n";
+echo "🔹 [PTMP Stations]    \$stations = \$ros->ptmp()->getStations();\n";
+echo "🔹 [PTMP Metrics]     \$metrics  = \$ros->ptmp()->getStationQualityMetrics();\n";
+echo "🔹 [PTMP Access-List] \$ros->ptmp()->addAccessList('00:0C:42:AA:BB:CC', 'wlan1', '-80..120');\n";
+echo "🔹 [PTMP Kick CPE]    \$ros->ptmp()->kickStation('00:0C:42:AA:BB:CC');\n";
+echo "🔹 [PTMP Set Channel] \$ros->ptmp()->setChannel('wlan1', 5180, '5ghz-only-n');\n";
+echo "🔹 [PTMP Set NV2]     \$ros->ptmp()->setProtocol('wlan1', 'nv2');\n";
+
+/*
+|--------------------------------------------------------------------------
+| 4. HOTSPOT & VOUCHER ENGINE
 |--------------------------------------------------------------------------
 */
 
 if ($ros->isConnected()) {
-    // Pantau trafik RX/TX realtime user hotspot
-    $traffic = $ros->hotspot()->getUserTraffic('budi_baru');
-
-    // Kunci user ke MAC HP pelanggan (Anti login ganda / anti tethering)
-    $ros->hotspot()->lockUserToMac('budi_baru', '00:1A:2B:3C:4D:5E');
-
-    // Bypass Smart TV tanpa login portal
-    $ros->hotspot()->bypassDevice('00:11:22:33:44:55', '192.168.88.50', 'Smart TV Lobby');
-}
-
-// Generate 10 Voucher sekaligus ke MikroTik & Database SQL
-if ($ros->isConnected() && $ros->hasDatabase()) {
-    $batch = $ros->voucher()->generateAndSave(10, [
+    $batch = $ros->voucher()->generateAndSave(5, [
         'prefix'            => 'VC-',
-        'length'            => 6,
         'profile'           => 'default',
         'limit-uptime'      => '2h',
+        'limit-bytes-total' => '1073741824',
         'price'             => 5000,
-        'batch_tag'         => 'kafe-' . date('Ymd'),
+        'batch_tag'         => 'demo-batch',
     ]);
-
-    // Buat link QR Code auto-login
-    $qrUrl = $ros->voucher()->generateQrCodeUrl('VC-8k2j9a', 'pass123', 'http://wifi.kafe/login');
-
-    // Format struk thermal Bluetooth printer kasir (58mm/80mm ESC/POS)
-    $struk = $ros->voucher()->renderThermalReceipt($batch['vouchers'][0] ?? [], [
-        'store_name' => 'WARKOP CYBER CAFE',
-        'address'    => 'Jl. Thamrin No. 45',
-        'login_url'  => 'http://wifi.kafe',
-    ]);
-    echo "✅ Voucher Engine & Database SQL Active!\n";
+    echo "✅ Berhasil membuat 5 voucher Hotspot (Batch ID: {$batch['batch_id']})\n";
 } else {
-    echo "🔹 [Voucher Engine] \$batch = \$ros->voucher()->generateAndSave(10, ['profile' => 'default', 'limit-uptime' => '2h']);\n";
-    echo "🔹 [Voucher QR]     \$qrUrl = \$ros->voucher()->generateQrCodeUrl('VC-8k2j9a', 'pass123');\n";
-    echo "🔹 [Voucher Print]  \$html  = \$ros->voucher()->renderPrintCards(\$vouchers, ['show_qr' => true]);\n";
+    echo "\n--- Hotspot & Voucher Engine ---\n";
+    echo "🔹 [Voucher] \$batch = \$ros->voucher()->generateAndSave(10, ['profile' => '1jam', 'price' => 3000]);\n";
+    echo "🔹 [Hotspot] \$ros->hotspot()->kickUser('budi');\n";
 }
 
 /*
 |--------------------------------------------------------------------------
-| 3. PPPOE & ISP BILLING AUTOMATION
+| 5. PPPOE ISP MANAGEMENT & AUTO ISOLATION
 |--------------------------------------------------------------------------
 */
 
 if ($ros->isConnected()) {
-    // Tambah pelanggan PPPoE & tetapkan IP Statis
-    $ros->pppoe()->addUser('client01', 'pass123', 'pppoe', 'default');
-    $ros->pppoe()->assignStaticIp('client01', '10.10.10.50', '10.10.10.1');
-
-    // Kunci akun PPPoE ke MAC ONT/Modem pelanggan (Anti kloning)
-    $ros->pppoe()->bindCallerId('client01', '00:E0:4C:53:44:58');
-
-    // Catat tanggal jatuh tempo tagihan (Due Date)
-    $ros->pppoe()->setPppoeDueDate('client01', date('Y-m-d', strtotime('+30 days')), 'INV-2026-001');
-
-    // Isolir massal otomatis pelanggan menunggak (Cron Job Ready)
-    $overdues = $ros->pppoe()->getOverdueCustomers();
+    $ros->pppoe()->setPppoeDueDate('client01', '2026-11-20');
     $isolated = $ros->pppoe()->autoIsolateOverdue('ISOLIR');
-
-    // Buka isolir saat pelanggan sudah bayar
     $ros->pppoe()->unsuspendCustomer('client01', 'default');
 } else {
+    echo "\n--- PPPoE ISP Billing ---\n";
     echo "🔹 [PPPoE Billing] \$ros->pppoe()->setPppoeDueDate('client01', '2026-11-20');\n";
     echo "🔹 [PPPoE Billing] \$ros->pppoe()->autoIsolateOverdue('ISOLIR');\n";
     echo "🔹 [PPPoE Billing] \$ros->pppoe()->unsuspendCustomer('client01', 'default');\n";
@@ -129,30 +136,19 @@ if ($ros->isConnected()) {
 
 /*
 |--------------------------------------------------------------------------
-| 4. DATABASE SQL (SQLite & MySQL) & JSON FLAT-FILE
+| 6. DATABASE SQL (SQLite & MySQL) & JSON FLAT-FILE
 |--------------------------------------------------------------------------
 */
 
-if ($ros->hasDatabase()) {
-    $vouchersInDb = $ros->voucher()->getFromDb(['status' => 'active', 'limit' => 20]);
-    $salesReport  = $ros->voucher()->getSalesReport();
-}
-
 // Flat-File JSON Storage
 $json = $ros->json();
-$json->set('app_config', 'site_name', 'Hotspot RT/RW Net');
+$json->set('app_config', 'site_name', 'Hotspot & PTMP RT/RW Net');
 $json->push('transactions', [
     'invoice' => 'INV-001',
     'amount'  => 5000,
     'date'    => date('Y-m-d H:i:s'),
 ]);
-echo "✅ Flat-File JSON Storage Ready (database/json/app_config.json)\n";
-
-/*
-|--------------------------------------------------------------------------
-| 5. ROUTEROS v6.xx - v7.xx DETECTOR
-|--------------------------------------------------------------------------
-*/
-$system = $ros->system();
+echo "\n✅ Flat-File JSON Storage Ready (database/json/app_config.json)\n";
 echo "🚀 RouterOS Version Detector Ready (v6 / v7 auto-adaptation)\n";
+echo "📂 Multi-Language SDK: Python ('routeros.py'), JS ('assets/js/routeros.js'), REST API ('api.php'), CLI ('console.php')\n";
 echo "📂 Lihat contoh modular lengkap di: 'examples/'\n";

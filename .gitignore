@@ -9,3 +9,6 @@
 !/database/cache/.gitkeep
 /database/exports/*
 !/database/exports/.gitkeep
+
+__pycache__/
+*.pyc

@@ -3,12 +3,15 @@
 namespace RouterOSFramework\Core;
 
 use RouterOS\Query;
+use RouterOSFramework\Actions\Creator;
 use RouterOSFramework\Actions\Finder;
 use RouterOSFramework\Actions\Getter;
 use RouterOSFramework\Actions\Printer;
+use RouterOSFramework\Actions\Reader;
 use RouterOSFramework\Actions\Remover;
 use RouterOSFramework\Actions\Setter;
 use RouterOSFramework\Actions\Toggler;
+use RouterOSFramework\Actions\Writer;
 use RouterOSFramework\Modules\Backup;
 use RouterOSFramework\Modules\Billing;
 use RouterOSFramework\Modules\BotHandler;
@@ -18,6 +21,7 @@ use RouterOSFramework\Modules\Hotspot;
 use RouterOSFramework\Modules\Ip;
 use RouterOSFramework\Modules\NetworkInterface;
 use RouterOSFramework\Modules\PPPoE;
+use RouterOSFramework\Modules\Ptmp;
 use RouterOSFramework\Modules\Queue;
 use RouterOSFramework\Modules\System;
 use RouterOSFramework\Modules\Tool;
@@ -28,6 +32,8 @@ use RouterOSFramework\Modules\Wireless;
 /**
  * Class RouterOS
  * Main entry point and unified facade for the MikroTik RouterOS Framework.
+ * Supports RouterOS v6.xx, v7.xx+, Multi-Protocol Transports (API, REST, SSH, Telnet)
+ * and Point-to-Multipoint (PTMP) wireless networks.
  */
 class RouterOS
 {
@@ -50,11 +56,15 @@ class RouterOS
     private ?Backup $backup = null;
     private ?Tool $tool = null;
     private ?Wireless $wireless = null;
+    private ?Ptmp $ptmp = null;
     private ?Vpn $vpn = null;
     private ?Billing $billing = null;
     private ?DnsFilter $dnsFilter = null;
 
     // Action instances (lazy loaded)
+    private ?Creator $creator = null;
+    private ?Writer $writer = null;
+    private ?Reader $reader = null;
     private ?Finder $finder = null;
     private ?Setter $setter = null;
     private ?Getter $getter = null;
@@ -121,10 +131,53 @@ class RouterOS
         $this->backup = null;
         $this->tool = null;
         $this->wireless = null;
+        $this->ptmp = null;
         $this->vpn = null;
         $this->billing = null;
         $this->dnsFilter = null;
 
+        return $this;
+    }
+
+    // --- PROTOCOL SWITCHING ---
+
+    public function setProtocol(string $protocol, ?int $port = null): bool
+    {
+        return $this->connection->setProtocol($protocol, $port);
+    }
+
+    public function getProtocol(): string
+    {
+        return $this->connection->getProtocol();
+    }
+
+    public function useRest(?int $port = null): self
+    {
+        $this->connection->setProtocol('rest', $port);
+        return $this;
+    }
+
+    public function useSsh(?int $port = null): self
+    {
+        $this->connection->setProtocol('ssh', $port);
+        return $this;
+    }
+
+    public function useTelnet(?int $port = null): self
+    {
+        $this->connection->setProtocol('telnet', $port);
+        return $this;
+    }
+
+    public function useApi(?int $port = null): self
+    {
+        $this->connection->setProtocol('api', $port);
+        return $this;
+    }
+
+    public function useAuto(): self
+    {
+        $this->connection->setProtocol('auto');
         return $this;
     }
 
@@ -143,6 +196,16 @@ class RouterOS
     public function pppoe(): PPPoE
     {
         return $this->pppoe ??= new PPPoE($this->connection, $this->db);
+    }
+
+    public function ptmp(): Ptmp
+    {
+        return $this->ptmp ??= new Ptmp($this->connection, $this->db);
+    }
+
+    public function wireless(): Wireless
+    {
+        return $this->wireless ??= new Wireless($this->connection, $this->db);
     }
 
     public function firewall(): Firewall
@@ -183,11 +246,6 @@ class RouterOS
     public function tool(): Tool
     {
         return $this->tool ??= new Tool($this->connection, $this->db);
-    }
-
-    public function wireless(): Wireless
-    {
-        return $this->wireless ??= new Wireless($this->connection, $this->db);
     }
 
     public function vpn(): Vpn
@@ -250,7 +308,37 @@ class RouterOS
         return $this->connection->getConnectionError();
     }
 
-    // --- DEDICATED ACTION MODULES ---
+    // --- FULL OPERATIONAL ACTION MODULES (CRUD & BEYOND) ---
+
+    public function create(): Creator
+    {
+        return $this->creator ??= new Creator($this->connection, $this->find());
+    }
+
+    public function creator(): Creator
+    {
+        return $this->create();
+    }
+
+    public function write(): Writer
+    {
+        return $this->writer ??= new Writer($this->connection);
+    }
+
+    public function writer(): Writer
+    {
+        return $this->write();
+    }
+
+    public function read(): Reader
+    {
+        return $this->reader ??= new Reader($this->connection);
+    }
+
+    public function reader(): Reader
+    {
+        return $this->read();
+    }
 
     public function find(): Finder
     {

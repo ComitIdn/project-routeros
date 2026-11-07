@@ -5,43 +5,126 @@ namespace RouterOSFramework\Core;
 use RouterOS\Client;
 use RouterOS\Query;
 use RouterOS\ResponseException;
+use RouterOSFramework\Transports\ApiTransport;
+use RouterOSFramework\Transports\AutoTransport;
+use RouterOSFramework\Transports\RestTransport;
+use RouterOSFramework\Transports\SshTransport;
+use RouterOSFramework\Transports\TelnetTransport;
+use RouterOSFramework\Transports\TransportInterface;
 use Throwable;
 
 /**
  * Class Connection
- * Manages RouterOS API socket communication with robust error recovery.
+ * Manages RouterOS communication across protocols (API socket, REST HTTP/HTTPS, SSH CLI, Telnet CLI).
+ * Provides robust error recovery and dynamic transport switching.
  */
 class Connection
 {
-    private ?Client $client = null;
+    private ?TransportInterface $transport = null;
     private ?string $connectionError = null;
     private array $config;
+    private string $protocol;
 
     /**
      * Connection constructor.
      *
      * @param array $config [
-     *    'host'    => string,
-     *    'user'    => string,
-     *    'pass'    => string,
-     *    'port'    => int,
-     *    'timeout' => int,
+     *    'host'     => string,
+     *    'user'     => string,
+     *    'pass'     => string,
+     *    'port'     => int,
+     *    'timeout'  => int,
+     *    'protocol' => string ('api'|'rest'|'ssh'|'telnet'|'auto'),
+     *    'ssl'      => bool,
      * ]
      * @param bool $autoConnect
      */
     public function __construct(array $config = [], bool $autoConnect = true)
     {
+        $this->protocol = strtolower((string)($config['protocol'] ?? 'api'));
+
+        // Default ports according to protocol if not explicitly set
+        $defaultPort = match ($this->protocol) {
+            'rest'   => (!empty($config['ssl']) ? 443 : 80),
+            'ssh'    => 22,
+            'telnet' => 23,
+            default  => 8728,
+        };
+
         $this->config = [
-            'host'    => $config['host'] ?? '192.168.88.1',
-            'user'    => $config['user'] ?? ($config['username'] ?? 'admin'),
-            'pass'    => $config['pass'] ?? ($config['password'] ?? ''),
-            'port'    => (int)($config['port'] ?? 8728),
-            'timeout' => (int)($config['timeout'] ?? 3),
+            'host'       => $config['host'] ?? '192.168.88.1',
+            'user'       => $config['user'] ?? ($config['username'] ?? 'admin'),
+            'pass'       => $config['pass'] ?? ($config['password'] ?? ''),
+            'port'       => (int)($config['port'] ?? $defaultPort),
+            'timeout'    => (int)($config['timeout'] ?? 3),
+            'protocol'   => $this->protocol,
+            'ssl'        => (bool)($config['ssl'] ?? false),
+            'verify_ssl' => (bool)($config['verify_ssl'] ?? false),
+            'key'        => $config['key'] ?? null,
         ];
+
+        $this->initTransport();
 
         if ($autoConnect) {
             $this->connect();
         }
+    }
+
+    /**
+     * Initialize transport instance according to selected protocol.
+     */
+    private function initTransport(): void
+    {
+        $this->transport = match ($this->protocol) {
+            'rest'   => new RestTransport($this->config),
+            'ssh'    => new SshTransport($this->config),
+            'telnet' => new TelnetTransport($this->config),
+            'auto'   => new AutoTransport($this->config),
+            default  => new ApiTransport($this->config),
+        };
+    }
+
+    /**
+     * Switch protocol dynamically at runtime.
+     *
+     * @param string $protocol 'api', 'rest', 'ssh', 'telnet', 'auto'
+     * @param int|null $customPort Optional custom port
+     * @return bool
+     */
+    public function setProtocol(string $protocol, ?int $customPort = null): bool
+    {
+        $this->protocol = strtolower($protocol);
+        $this->config['protocol'] = $this->protocol;
+
+        if ($customPort !== null) {
+            $this->config['port'] = $customPort;
+        } else {
+            $this->config['port'] = match ($this->protocol) {
+                'rest'   => (!empty($this->config['ssl']) ? 443 : 80),
+                'ssh'    => 22,
+                'telnet' => 23,
+                default  => 8728,
+            };
+        }
+
+        $this->initTransport();
+        return $this->connect();
+    }
+
+    /**
+     * Get active protocol name.
+     */
+    public function getProtocol(): string
+    {
+        return $this->transport ? $this->transport->getProtocol() : $this->protocol;
+    }
+
+    /**
+     * Get underlying transport instance.
+     */
+    public function getTransport(): ?TransportInterface
+    {
+        return $this->transport;
     }
 
     /**
@@ -51,21 +134,18 @@ class Connection
      */
     public function connect(): bool
     {
-        try {
-            $this->client = new Client([
-                'host'    => $this->config['host'],
-                'user'    => $this->config['user'],
-                'pass'    => $this->config['pass'],
-                'port'    => $this->config['port'],
-                'timeout' => $this->config['timeout'],
-            ]);
+        if ($this->transport === null) {
+            $this->initTransport();
+        }
+
+        $connected = $this->transport->connect();
+        if ($connected) {
             $this->connectionError = null;
             return true;
-        } catch (Throwable $e) {
-            $this->client = null;
-            $this->connectionError = $e->getMessage();
-            return false;
         }
+
+        $this->connectionError = $this->transport->getLastError() ?? 'Failed to connect via ' . $this->protocol;
+        return false;
     }
 
     /**
@@ -75,7 +155,7 @@ class Connection
      */
     public function isConnected(): bool
     {
-        return $this->client !== null && $this->connectionError === null;
+        return $this->transport !== null && $this->transport->isConnected();
     }
 
     /**
@@ -85,7 +165,7 @@ class Connection
      */
     public function getConnectionError(): ?string
     {
-        return $this->connectionError;
+        return $this->connectionError ?? ($this->transport ? $this->transport->getLastError() : null);
     }
 
     /**
@@ -99,13 +179,16 @@ class Connection
     }
 
     /**
-     * Get underlying evilfreelancer Client instance.
+     * Get underlying evilfreelancer Client instance (if using ApiTransport).
      *
      * @return Client|null
      */
     public function getClient(): ?Client
     {
-        return $this->client;
+        if ($this->transport instanceof ApiTransport) {
+            return $this->transport->getClient();
+        }
+        return null;
     }
 
     /**
@@ -116,19 +199,13 @@ class Connection
      */
     public function executeQuery(Query $query): array
     {
-        if ($this->client === null) {
-            if (!$this->connect()) {
-                return ['error' => $this->connectionError ?? 'RouterOS client not connected'];
-            }
+        if ($this->transport instanceof ApiTransport) {
+            return $this->transport->executeQuery($query);
         }
 
-        try {
-            return $this->client->query($query)->read();
-        } catch (ResponseException $e) {
-            return ['error' => $e->getMessage()];
-        } catch (Throwable $e) {
-            return ['error' => $e->getMessage()];
-        }
+        // Fallback for non-API transports
+        $endpoint = $query->getEndpoint();
+        return $this->read($endpoint);
     }
 
     /**
@@ -140,11 +217,10 @@ class Connection
      */
     public function read(string $endpoint, array $where = []): array
     {
-        $query = new Query($endpoint);
-        foreach ($where as $k => $v) {
-            $query->where($k, $v);
+        if ($this->transport === null) {
+            $this->initTransport();
         }
-        return $this->executeQuery($query);
+        return $this->transport->read($endpoint, $where);
     }
 
     /**
@@ -156,14 +232,10 @@ class Connection
      */
     public function write(string $endpoint, array $params = []): array
     {
-        $query = new Query($endpoint);
-        foreach ($params as $k => $v) {
-            if ($v !== null && $v !== '') {
-                $val = is_bool($v) ? ($v ? 'yes' : 'no') : (string)$v;
-                $query->equal($k, $val);
-            }
+        if ($this->transport === null) {
+            $this->initTransport();
         }
-        return $this->executeQuery($query);
+        return $this->transport->write($endpoint, $params);
     }
 
     /**
@@ -176,14 +248,10 @@ class Connection
      */
     public function set(string $endpoint, string $idOrNumber, array $params): array
     {
-        $query = (new Query($endpoint))->equal('.id', $idOrNumber);
-        foreach ($params as $k => $v) {
-            if ($v !== null && $v !== '') {
-                $val = is_bool($v) ? ($v ? 'yes' : 'no') : (string)$v;
-                $query->equal($k, $val);
-            }
+        if ($this->transport === null) {
+            $this->initTransport();
         }
-        return $this->executeQuery($query);
+        return $this->transport->set($endpoint, $idOrNumber, $params);
     }
 
     /**
@@ -195,8 +263,39 @@ class Connection
      */
     public function remove(string $endpoint, string $idOrNumber): array
     {
-        $query = (new Query($endpoint))->equal('.id', $idOrNumber);
-        return $this->executeQuery($query);
+        if ($this->transport === null) {
+            $this->initTransport();
+        }
+        return $this->transport->remove($endpoint, $idOrNumber);
+    }
+
+    /**
+     * Execute command with parameters.
+     *
+     * @param string $command
+     * @param array $params
+     * @return array
+     */
+    public function execute(string $command, array $params = []): array
+    {
+        if ($this->transport === null) {
+            $this->initTransport();
+        }
+        return $this->transport->execute($command, $params);
+    }
+
+    /**
+     * Execute raw CLI terminal string.
+     *
+     * @param string $cliCommand
+     * @return string
+     */
+    public function execRaw(string $cliCommand): string
+    {
+        if ($this->transport === null) {
+            $this->initTransport();
+        }
+        return $this->transport->execRaw($cliCommand);
     }
 
     /**
@@ -208,8 +307,7 @@ class Connection
      */
     public function enable(string $endpoint, string $idOrNumber): array
     {
-        $query = (new Query($endpoint))->equal('.id', $idOrNumber);
-        return $this->executeQuery($query);
+        return $this->write($endpoint, ['.id' => $idOrNumber]);
     }
 
     /**
@@ -221,8 +319,7 @@ class Connection
      */
     public function disable(string $endpoint, string $idOrNumber): array
     {
-        $query = (new Query($endpoint))->equal('.id', $idOrNumber);
-        return $this->executeQuery($query);
+        return $this->write($endpoint, ['.id' => $idOrNumber]);
     }
 
     /**

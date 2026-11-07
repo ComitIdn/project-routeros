@@ -7,8 +7,10 @@
  * Endpoint API RESTful universal untuk dihubungkan ke:
  * - Aplikasi Web Modern (React, Vue, Angular, Svelte, Next.js)
  * - Mobile App (Flutter, React Native, Android/iOS)
+ * - Python / JS / Node.js Clients
  * - Bot Telegram, WhatsApp, Discord
  * - Webhook & Integrasi Sistem Pembayaran (Payment Gateway)
+ * - PTMP Wireless Towers & Base Stations
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -21,7 +23,7 @@ $ros = RouterOS::withConfig(__DIR__ . '/config.php');
 
 // Allow CORS
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
@@ -34,6 +36,11 @@ $inputJson = json_decode(file_get_contents('php://input'), true) ?: [];
 $request = array_merge($_GET, $_POST, $inputJson);
 $action = $request['action'] ?? ($request['endpoint'] ?? 'status');
 
+// Optional runtime protocol switch: 'api', 'rest', 'ssh', 'telnet', 'auto'
+if (!empty($request['protocol'])) {
+    $ros->setProtocol($request['protocol'], !empty($request['port']) ? (int)$request['port'] : null);
+}
+
 try {
     switch ($action) {
         // --- STATUS & RESOURCES ---
@@ -44,6 +51,7 @@ try {
 
             Response::json([
                 'connected' => $ros->isConnected(),
+                'protocol'  => $ros->getProtocol(),
                 'identity'  => $identity[0]['name'] ?? 'MikroTik',
                 'resources' => $resources[0] ?? [],
                 'summary'   => $summary,
@@ -78,107 +86,79 @@ try {
             break;
 
         // --- GENERATE VOUCHERS (POST) ---
-        case 'generate_vouchers':
-            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' && empty($inputJson)) {
-                Response::json(null, 405, 'Method Not Allowed. Use POST.');
-            }
+        case 'generate_voucher':
+            $count = (int)($request['count'] ?? 10);
+            $profile = $request['profile'] ?? 'default';
+            $timeLimit = $request['time_limit'] ?? '1h';
+            $price = (float)($request['price'] ?? 5000);
+            $prefix = $request['prefix'] ?? 'VC';
+            $comment = $request['comment'] ?? 'Voucher API';
 
-            $count = max(1, min(100, (int)($request['count'] ?? 5)));
-            $options = [
-                'prefix'            => $request['prefix'] ?? 'VC-',
-                'length'            => (int)($request['length'] ?? 6),
-                'characters'        => $request['characters'] ?? 'alphanumeric',
-                'user_mode'         => $request['user_mode'] ?? 'user_password',
-                'profile'           => $request['profile'] ?? 'default',
-                'limit-uptime'      => $request['limit_uptime'] ?? ($request['limit-uptime'] ?? ''),
-                'limit-bytes-total' => $request['limit_bytes'] ?? ($request['limit-bytes-total'] ?? ''),
-                'price'             => (float)($request['price'] ?? 0),
-                'batch_tag'         => $request['batch_tag'] ?? ('api-' . date('Ymd-His')),
-            ];
+            $result = $ros->voucher()->generate([
+                'count'      => $count,
+                'profile'    => $profile,
+                'time_limit' => $timeLimit,
+                'price'      => $price,
+                'prefix'     => $prefix,
+                'comment'    => $comment,
+            ]);
 
-            $batch = $ros->voucher()->generateAndSave($count, $options);
-            Response::json($batch, 201, "Successfully generated {$batch['generated']} vouchers");
+            Response::json($result, 201, 'Vouchers successfully generated');
             break;
 
-        // --- KICK ACTIVE USER (POST) ---
+        // --- KICK USER ---
         case 'kick':
-            $target = $request['username'] ?? ($request['user'] ?? '');
-            if (empty($target)) {
-                Response::json(null, 400, 'Parameter "username" is required');
+            $username = $request['username'] ?? '';
+            if (empty($username)) {
+                Response::json(null, 400, 'Parameter username is required');
             }
-            $res = $ros->hotspot()->disconnectUser($target);
-            Response::json($res, 200, "User '{$target}' disconnected successfully");
+            $result = $ros->hotspot()->kickUser($username);
+            Response::json($result, 200, "User {$username} disconnected");
             break;
 
-        // --- BYPASS DEVICE MAC (POST) ---
-        case 'bypass':
-            $mac = $request['mac'] ?? ($request['mac_address'] ?? '');
-            $comment = $request['comment'] ?? 'Bypassed via REST API';
-            if (empty($mac)) {
-                Response::json(null, 400, 'Parameter "mac" is required');
-            }
-            $res = $ros->hotspot()->bypassDevice($mac, null, $comment);
-            Response::json($res, 200, "Device '{$mac}' bypassed successfully");
-            break;
-
-        // --- REALTIME TRAFFIC MONITOR ---
-        case 'traffic':
-            $iface = $request['interface'] ?? 'ether1';
-            $traffic = $ros->interface()->monitorTraffic($iface, 1);
-            Response::json($traffic, 200, "Realtime traffic for {$iface}");
-            break;
-
-        // --- NEW ACTION: FIND NAME TO ID ---
+        // --- FIND NAME TO ID ---
         case 'find_id':
-        case 'findname_to_id':
             $name = $request['name'] ?? ($request['username'] ?? '');
             $path = $request['path'] ?? '/ip/hotspot/user';
-            $id = $ros->find()->nameToId($name, $path);
-            Response::json(['name' => $name, 'id' => $id, 'path' => $path], 200, "Resolved name to ID");
+            $id = $ros->findNameToId($name, $path);
+            Response::json(['name' => $name, 'id' => $id, 'path' => $path], 200, "ID lookup complete");
             break;
 
-        // --- NEW ACTION: SET LIMIT ---
+        // --- GRANULAR SETTERS ---
         case 'set_limit':
-        case 'setlimit':
-            $user = $request['username'] ?? ($request['name'] ?? '');
-            $uptime = $request['limit_uptime'] ?? ($request['limit-uptime'] ?? null);
-            $bytes = $request['limit_bytes'] ?? ($request['limit-bytes-total'] ?? null);
+            $name = $request['name'] ?? ($request['username'] ?? '');
+            $uptime = $request['limit_uptime'] ?? ($request['uptime'] ?? null);
+            $bytes = $request['limit_bytes'] ?? ($request['bytes'] ?? null);
             $path = $request['path'] ?? '/ip/hotspot/user';
-            $res = $ros->set()->limit($user, $uptime, $bytes, $path);
-            Response::json($res, 200, "Limit updated for {$user}");
+            $res = $ros->setLimit($name, $uptime, $bytes, $path);
+            Response::json($res, 200, "Limit updated for {$name}");
             break;
 
-        // --- NEW ACTION: SET COMMENT ---
         case 'set_comment':
-        case 'setcoment':
-            $user = $request['username'] ?? ($request['name'] ?? '');
+            $name = $request['name'] ?? ($request['username'] ?? '');
             $comment = $request['comment'] ?? '';
             $path = $request['path'] ?? '/ip/hotspot/user';
-            $res = $ros->set()->comment($user, $comment, $path);
-            Response::json($res, 200, "Comment updated for {$user}");
+            $res = $ros->setComment($name, $comment, $path);
+            Response::json($res, 200, "Comment updated for {$name}");
             break;
 
-        // --- NEW ACTION: SET EMAIL ---
         case 'set_email':
-        case 'setemail':
-            $user = $request['username'] ?? ($request['name'] ?? '');
+            $name = $request['name'] ?? ($request['username'] ?? '');
             $email = $request['email'] ?? '';
             $path = $request['path'] ?? '/ip/hotspot/user';
-            $res = $ros->set()->email($user, $email, $path);
-            Response::json($res, 200, "Email updated for {$user}");
+            $res = $ros->setEmail($name, $email, $path);
+            Response::json($res, 200, "Email updated for {$name}");
             break;
 
-        // --- NEW ACTION: SET NAME ---
         case 'set_name':
-        case 'setname':
-            $oldName = $request['old_name'] ?? ($request['name'] ?? ($request['id'] ?? ''));
-            $newName = $request['new_name'] ?? '';
+            $idOrOld = $request['id'] ?? ($request['old_name'] ?? '');
+            $newName = $request['new_name'] ?? ($request['name'] ?? '');
             $path = $request['path'] ?? '/ip/hotspot/user';
-            $res = $ros->set()->name($oldName, $newName, $path);
-            Response::json($res, 200, "Renamed '{$oldName}' to '{$newName}'");
+            $res = $ros->setName($idOrOld, $newName, $path);
+            Response::json($res, 200, "Name updated to {$newName}");
             break;
 
-        // --- NEW ACTION: SALES REPORT ---
+        // --- SALES REPORT ---
         case 'sales_report':
             $res = $ros->voucher()->getSalesReport();
             Response::json($res, 200, "Voucher sales report");
@@ -216,7 +196,100 @@ try {
             Response::json($res, 200, "Bound {$user} to MAC {$mac}");
             break;
 
-        // --- GENERIC SUPERPOWER ACTIONS ---
+        // --- MULTI-PTMP WIRELESS ENDPOINTS ---
+        case 'ptmp_detect':
+            $res = $ros->ptmp()->detectHardware();
+            Response::json($res, 200, "PTMP Hardware detection");
+            break;
+
+        case 'ptmp_stations':
+            $iface = $request['interface'] ?? null;
+            $res = $ros->ptmp()->getStations($iface);
+            Response::json($res, 200, "Connected PTMP CPE stations");
+            break;
+
+        case 'ptmp_metrics':
+            $iface = $request['interface'] ?? null;
+            $res = $ros->ptmp()->getStationQualityMetrics($iface);
+            Response::json($res, 200, "PTMP link quality metrics");
+            break;
+
+        case 'ptmp_access_list':
+            $res = $ros->ptmp()->getAccessList();
+            Response::json($res, 200, "PTMP Access list rules");
+            break;
+
+        case 'ptmp_add_access':
+            $mac = $request['mac'] ?? '';
+            $iface = $request['interface'] ?? null;
+            $signal = $request['signal_range'] ?? null;
+            $comment = $request['comment'] ?? null;
+            $allow = isset($request['allow']) ? (bool)$request['allow'] : true;
+            $res = $ros->ptmp()->addAccessList($mac, $iface, $signal, $comment, $allow);
+            Response::json($res, 201, "Added MAC {$mac} to PTMP Access List");
+            break;
+
+        case 'ptmp_remove_access':
+            $macOrId = $request['id'] ?? ($request['mac'] ?? '');
+            $res = $ros->ptmp()->removeAccessList($macOrId);
+            Response::json($res, 200, "Removed {$macOrId} from PTMP Access List");
+            break;
+
+        case 'ptmp_kick':
+            $mac = $request['mac'] ?? '';
+            $res = $ros->ptmp()->kickStation($mac);
+            Response::json($res, 200, "Kicked PTMP station {$mac}");
+            break;
+
+        case 'ptmp_set_channel':
+            $iface = $request['interface'] ?? 'wlan1';
+            $freq = $request['frequency'] ?? 'auto';
+            $band = $request['band'] ?? '5ghz-only-n';
+            $width = $request['width'] ?? '20/40mhz-XX';
+            $res = $ros->ptmp()->setChannel($iface, $freq, $band, $width);
+            Response::json($res, 200, "Channel updated on {$iface}");
+            break;
+
+        case 'ptmp_set_protocol':
+            $iface = $request['interface'] ?? 'wlan1';
+            $proto = $request['wireless_protocol'] ?? ($request['protocol'] ?? 'nv2');
+            $res = $ros->ptmp()->setProtocol($iface, $proto);
+            Response::json($res, 200, "Wireless protocol on {$iface} set to {$proto}");
+            break;
+
+        case 'ptmp_set_nv2':
+            $iface = $request['interface'] ?? 'wlan1';
+            $opts = $request['options'] ?? [];
+            $res = $ros->ptmp()->setNv2Config($iface, $opts);
+            Response::json($res, 200, "NV2 config updated on {$iface}");
+            break;
+
+        // --- UNIVERSAL FULL CRUD ACTIONS ---
+        case 'create':
+        case 'generic_create':
+            $path = $request['path'] ?? '';
+            $data = $request['data'] ?? ($request['params'] ?? []);
+            $res = $ros->create()->create($path, $data);
+            Response::json($res, 201, "Created item on {$path}");
+            break;
+
+        case 'write':
+        case 'generic_write':
+            $path = $request['path'] ?? '';
+            $params = $request['params'] ?? [];
+            $res = $ros->write()->write($path, $params);
+            Response::json($res, 200, "Executed write on {$path}");
+            break;
+
+        case 'read':
+        case 'generic_read':
+        case 'generic_get':
+            $path = $request['path'] ?? '';
+            $where = $request['where'] ?? [];
+            $res = $ros->read()->read($path, $where);
+            Response::json($res, 200, "Items retrieved from {$path}");
+            break;
+
         case 'generic_set':
             $path = $request['path'] ?? '';
             $idOrName = $request['id_or_name'] ?? ($request['name'] ?? '');
@@ -225,18 +298,24 @@ try {
             Response::json($res, 200, "Updated item on {$path}");
             break;
 
-        case 'generic_get':
-            $path = $request['path'] ?? '';
-            $where = $request['where'] ?? [];
-            $res = $ros->get()->get($path, $where);
-            Response::json($res, 200, "Items retrieved from {$path}");
-            break;
-
         case 'generic_remove':
             $path = $request['path'] ?? '';
             $idOrName = $request['id_or_name'] ?? ($request['name'] ?? '');
             $res = $ros->remove()->remove($path, $idOrName);
             Response::json($res, 200, "Item removed from {$path}");
+            break;
+
+        case 'generic_toggle':
+            $path = $request['path'] ?? '';
+            $idOrName = $request['id_or_name'] ?? ($request['name'] ?? '');
+            $res = $ros->toggle()->toggle($path, $idOrName);
+            Response::json($res, 200, "Toggled item status on {$path}");
+            break;
+
+        case 'terminal':
+            $cmd = $request['cmd'] ?? ($request['command'] ?? '');
+            $res = $ros->write()->terminal($cmd);
+            Response::json(['command' => $cmd, 'output' => $res], 200, "Command executed");
             break;
 
         default:

@@ -1,7 +1,7 @@
 /**
  * RouterOS Web & JavaScript SDK (Lightweight Universal Client)
  * Compatible with Vanilla JS, React, Vue, Svelte, Node.js, and Mobile WebViews.
- * Connects directly to api.php REST JSON endpoints.
+ * Connects directly to api.php REST JSON endpoints or MikroTik v7 REST API.
  */
 
 (function (root, factory) {
@@ -19,10 +19,12 @@
         /**
          * @param {Object} options
          * @param {string} options.endpoint Base URL to api.php (default: 'api.php')
+         * @param {string} options.protocol Transport protocol: 'api'|'rest'|'ssh'|'telnet'|'auto'
          * @param {Object} options.headers Custom headers (e.g. Authorization tokens)
          */
         constructor(options = {}) {
             this.endpoint = (options.endpoint || 'api.php').replace(/\/+$/, '');
+            this.protocol = options.protocol || null;
             this.headers = Object.assign({
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
@@ -32,7 +34,17 @@
             this.hotspot = new HotspotClient(this);
             this.voucher = new VoucherClient(this);
             this.pppoe = new PPPoEClient(this);
+            this.ptmp = new PtmpClient(this);
             this.system = new SystemClient(this);
+        }
+
+        /**
+         * Set or switch transport protocol.
+         * @param {string} protocol 'api', 'rest', 'ssh', 'telnet', 'auto'
+         */
+        setProtocol(protocol) {
+            this.protocol = protocol;
+            return this;
         }
 
         /**
@@ -45,6 +57,10 @@
          */
         async request(action, method = 'GET', data = null) {
             let url = `${this.endpoint}?action=${encodeURIComponent(action)}`;
+            if (this.protocol) {
+                url += `&protocol=${encodeURIComponent(this.protocol)}`;
+            }
+
             const fetchOpts = {
                 method: method.toUpperCase(),
                 headers: this.headers,
@@ -67,22 +83,42 @@
             return json.data !== undefined ? json.data : json;
         }
 
-        // --- GENERIC SUPERPOWER ACTIONS ---
+        // --- FULL OPERATIONAL CRUD ACTIONS ---
 
-        async findId(name, path = '/ip/hotspot/user') {
-            return this.request('find_id', 'POST', { name, path });
+        async create(path, data = {}) {
+            return this.request('create', 'POST', { path, data });
+        }
+
+        async write(path, params = {}) {
+            return this.request('write', 'POST', { path, params });
+        }
+
+        async read(path, where = {}) {
+            return this.request('read', 'POST', { path, where });
+        }
+
+        async get(path, where = {}) {
+            return this.read(path, where);
         }
 
         async set(path, idOrName, params = {}) {
             return this.request('generic_set', 'POST', { path, id_or_name: idOrName, params });
         }
 
-        async get(path, where = {}) {
-            return this.request('generic_get', 'POST', { path, where });
-        }
-
         async remove(path, idOrName) {
             return this.request('generic_remove', 'POST', { path, id_or_name: idOrName });
+        }
+
+        async toggle(path, idOrName) {
+            return this.request('generic_toggle', 'POST', { path, id_or_name: idOrName });
+        }
+
+        async findId(name, path = '/ip/hotspot/user') {
+            return this.request('find_id', 'POST', { name, path });
+        }
+
+        async terminal(cmd) {
+            return this.request('terminal', 'POST', { cmd });
         }
     }
 
@@ -91,8 +127,8 @@
             this.client = client;
         }
 
-        async getUsers() {
-            return this.client.request('users', 'GET');
+        async getUsers(profile = '') {
+            return this.client.request('users', 'GET', profile ? { profile } : null);
         }
 
         async getActive() {
@@ -138,7 +174,7 @@
         }
 
         async generate(count = 10, options = {}) {
-            return this.client.request('generate_vouchers', 'POST', Object.assign({ count }, options));
+            return this.client.request('generate_voucher', 'POST', Object.assign({ count }, options));
         }
 
         async getSalesReport() {
@@ -169,6 +205,52 @@
 
         async bindCallerId(username, macAddress) {
             return this.client.request('pppoe_bind_caller', 'POST', { username, mac: macAddress });
+        }
+    }
+
+    class PtmpClient {
+        constructor(client) {
+            this.client = client;
+        }
+
+        async detectHardware() {
+            return this.client.request('ptmp_detect', 'GET');
+        }
+
+        async getStations(iface = null) {
+            return this.client.request('ptmp_stations', 'GET', iface ? { interface: iface } : null);
+        }
+
+        async getMetrics(iface = null) {
+            return this.client.request('ptmp_metrics', 'GET', iface ? { interface: iface } : null);
+        }
+
+        async getAccessList() {
+            return this.client.request('ptmp_access_list', 'GET');
+        }
+
+        async addAccessList(mac, options = {}) {
+            return this.client.request('ptmp_add_access', 'POST', Object.assign({ mac }, options));
+        }
+
+        async removeAccessList(macOrId) {
+            return this.client.request('ptmp_remove_access', 'POST', { id: macOrId });
+        }
+
+        async kickStation(mac) {
+            return this.client.request('ptmp_kick', 'POST', { mac });
+        }
+
+        async setChannel(iface, freq, band = '5ghz-only-n', width = '20/40mhz-XX') {
+            return this.client.request('ptmp_set_channel', 'POST', { interface: iface, frequency: freq, band, width });
+        }
+
+        async setProtocol(iface, protocol = 'nv2') {
+            return this.client.request('ptmp_set_protocol', 'POST', { interface: iface, wireless_protocol: protocol });
+        }
+
+        async setNv2(iface, options = {}) {
+            return this.client.request('ptmp_set_nv2', 'POST', { interface: iface, options });
         }
     }
 

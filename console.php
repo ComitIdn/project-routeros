@@ -6,11 +6,15 @@
  *
  * Jalankan langsung dari Terminal / Termux:
  * php console.php status
- * php console.php voucher 10 default 2h
- * php console.php kick user1
- * php console.php backup mybackup
- * php console.php wol AA:BB:CC:DD:EE:FF
- * php console.php comm "/ip/address/print"
+ * php console.php protocol rest
+ * php console.php ptmp stations
+ * php console.php ptmp access
+ * php console.php ptmp kick 00:11:22:33:44:55
+ * php console.php ptmp channel wlan1 5180
+ * php console.php create /ip/address address=10.10.10.1/24 interface=ether2
+ * php console.php read /ip/address
+ * php console.php write /system/reboot
+ * php console.php terminal "/interface wireless print"
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -33,6 +37,7 @@ switch ($command) {
         $summary = $ros->hotspot()->getSummary();
 
         echo "📡 Router Identity : " . ($identity[0]['name'] ?? 'MikroTik') . "\n";
+        echo "🌐 Protocol        : " . strtoupper($ros->getProtocol()) . "\n";
         echo "🖥️  Board Name      : " . ($res[0]['board-name'] ?? '-') . "\n";
         echo "⚙️  CPU Load        : " . ($res[0]['cpu-load'] ?? '0') . "%\n";
         echo "💾 Free Memory     : " . (isset($res[0]['free-memory']) ? Helper::formatBytes((float)$res[0]['free-memory']) : '-') . "\n";
@@ -40,6 +45,19 @@ switch ($command) {
         echo "👥 Hotspot Users   : " . ($summary['total_users'] ?? 0) . "\n";
         echo "🟢 Active Sessions : " . ($summary['active_users'] ?? 0) . "\n";
         echo "📱 Detected Hosts  : " . ($summary['total_hosts'] ?? 0) . "\n";
+        break;
+
+    case 'protocol':
+    case 'proto':
+        $proto = $args[1] ?? '';
+        if (!$proto) {
+            echo "🌐 Protokol aktif saat ini: " . strtoupper($ros->getProtocol()) . "\n";
+            echo "   Pilihan protokol: api, rest, ssh, telnet, auto\n";
+            break;
+        }
+        $port = isset($args[2]) ? (int)$args[2] : null;
+        $ok = $ros->setProtocol($proto, $port);
+        echo $ok ? "✅ Berhasil berganti ke protokol: " . strtoupper($proto) . "\n" : "❌ Gagal koneksi via " . strtoupper($proto) . "\n";
         break;
 
     case 'voucher':
@@ -58,9 +76,16 @@ switch ($command) {
             'batch_tag'         => 'cli-' . date('Ymd-His'),
         ]);
 
-        echo "✅ Berhasil membuat {$batch['generated']} voucher (Batch: {$batch['batch_tag']}):\n";
-        foreach ($batch['vouchers'] as $v) {
-            echo "   🔑 User: {$v['username']} | Pass: {$v['password']}\n";
+        if (isset($batch['error'])) {
+            echo "❌ Gagal: {$batch['error']}\n";
+        } else {
+            echo "✅ {$batch['count']} voucher berhasil dibuat dan disimpan!\n";
+            echo "ID Batch: {$batch['batch_id']}\n\n";
+            echo sprintf("%-15s | %-15s | %-10s\n", "Username", "Password", "Profile");
+            echo "------------------------------------------------\n";
+            foreach ($batch['vouchers'] as $v) {
+                echo sprintf("%-15s | %-15s | %-10s\n", $v['username'], $v['password'], $v['profile']);
+            }
         }
         break;
 
@@ -70,71 +95,59 @@ switch ($command) {
             echo "⚠️  Penggunaan: php console.php kick [username]\n";
             exit(1);
         }
-        $res = $ros->hotspot()->disconnectUser($user);
-        echo "⚡ User '{$user}' berhasil diputuskan ({$res['disconnected']} sesi ditutup).\n";
+        $res = $ros->hotspot()->kickUser($user);
+        echo !isset($res['error']) ? "✅ User '{$user}' berhasil diputuskan dari hotspot.\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'bypass':
         $mac = $args[1] ?? '';
-        $comment = $args[2] ?? 'CLI Bypassed';
-        if (!Helper::isValidMac($mac)) {
-            echo "⚠️  Format MAC tidak valid. Contoh: 00:11:22:33:44:55\n";
+        $comment = $args[2] ?? 'CLI-Bypass';
+        if (!$mac) {
+            echo "⚠️  Penggunaan: php console.php bypass [mac_address] [comment]\n";
             exit(1);
         }
-        $res = $ros->hotspot()->bypassDevice($mac, null, $comment);
-        echo !isset($res['error']) ? "✅ Perangkat '{$mac}' berhasil di-bypass!\n" : "❌ Gagal: {$res['error']}\n";
+        $res = $ros->hotspot()->bypassDevice($mac, $comment);
+        echo !isset($res['error']) ? "✅ Perangkat MAC '{$mac}' berhasil di-bypass.\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'backup':
-        $name = $args[1] ?? ('cli-backup-' . date('Ymd-His'));
-        echo "⏳ Membuat binary backup '{$name}'...\n";
-        $res = $ros->backup()->saveBackup($name);
-        echo !isset($res['error']) ? "✅ Backup '{$name}.backup' berhasil dibuat di storage router!\n" : "❌ Gagal: {$res['error']}\n";
+        $name = $args[1] ?? ('backup-' . date('Ymd-His'));
+        $res = $ros->backup()->createBinaryBackup($name);
+        echo !isset($res['error']) ? "✅ Backup berhasil dibuat dengan nama: {$name}\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'wol':
         $mac = $args[1] ?? '';
-        $iface = $args[2] ?? 'ether1';
-        if (!Helper::isValidMac($mac)) {
-            echo "⚠️  Format MAC tidak valid. Contoh: 00:11:22:33:44:55\n";
+        $interface = $args[2] ?? 'ether1';
+        if (!$mac) {
+            echo "⚠️  Penggunaan: php console.php wol [mac_address] [interface]\n";
             exit(1);
         }
-        $res = $ros->tool()->wakeOnLan($mac, $iface);
-        echo !isset($res['error']) ? "✅ Magic packet Wake-on-LAN dikirim ke '{$mac}' via {$iface}!\n" : "❌ Gagal: {$res['error']}\n";
-        break;
-
-    case 'comm':
-        $cmd = $args[1] ?? '';
-        if (!$cmd) {
-            echo "⚠️  Penggunaan: php console.php comm \"/ip/address/print\"\n";
-            exit(1);
-        }
-        $res = $ros->customCommand($cmd);
-        echo json_encode($res, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        $res = $ros->tool()->wakeOnLan($mac, $interface);
+        echo !isset($res['error']) ? "✅ Paket Wake-on-LAN berhasil dikirim ke {$mac}\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'setlimit':
         $user = $args[1] ?? '';
         $uptime = $args[2] ?? null;
         $bytes = $args[3] ?? null;
-        if (!$user) {
+        if (!$user || (!$uptime && !$bytes)) {
             echo "⚠️  Penggunaan: php console.php setlimit [username] [limit-uptime] [optional:limit-bytes]\n";
             exit(1);
         }
         $res = $ros->setLimit($user, $uptime, $bytes);
-        echo !isset($res['error']) ? "✅ Limit user '{$user}' berhasil diubah (Uptime: {$uptime}, Bytes: {$bytes})\n" : "❌ Gagal: {$res['error']}\n";
+        echo !isset($res['error']) ? "✅ Limit user '{$user}' berhasil diupdate.\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'setcomment':
-    case 'setcoment':
         $user = $args[1] ?? '';
         $comment = $args[2] ?? '';
-        if (!$user) {
-            echo "⚠️  Penggunaan: php console.php setcomment [username] \"komentar\"\n";
+        if (!$user || !$comment) {
+            echo "⚠️  Penggunaan: php console.php setcomment [username] [comment]\n";
             exit(1);
         }
         $res = $ros->setComment($user, $comment);
-        echo !isset($res['error']) ? "✅ Komentar user '{$user}' berhasil diubah: \"{$comment}\"\n" : "❌ Gagal: {$res['error']}\n";
+        echo !isset($res['error']) ? "✅ Komentar user '{$user}' berhasil diubah.\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'setemail':
@@ -145,7 +158,7 @@ switch ($command) {
             exit(1);
         }
         $res = $ros->setEmail($user, $email);
-        echo !isset($res['error']) ? "✅ Email user '{$user}' berhasil diubah: {$email}\n" : "❌ Gagal: {$res['error']}\n";
+        echo !isset($res['error']) ? "✅ Email user '{$user}' berhasil diubah.\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
     case 'setname':
@@ -192,23 +205,147 @@ switch ($command) {
         echo !isset($res['error']) ? "✅ Isolir pelanggan '{$user}' dibuka (Profile: {$profile})\n" : "❌ Gagal: {$res['error']}\n";
         break;
 
+    // --- MULTI-PTMP WIRELESS COMMANDS ---
+    case 'ptmp':
+        $sub = strtolower($args[1] ?? 'stations');
+        switch ($sub) {
+            case 'stations':
+                $iface = $args[2] ?? null;
+                $stations = $ros->ptmp()->getStations($iface);
+                echo "📡 Connected PTMP Client Stations (" . count($stations) . "):\n";
+                echo sprintf("%-18s | %-10s | %-10s | %-10s | %-8s | %-12s\n", "MAC Address", "Signal", "CCQ TX/RX", "Rate", "Uptime", "Health");
+                echo "--------------------------------------------------------------------------------\n";
+                foreach ($stations as $s) {
+                    echo sprintf("%-18s | %-10s | %-10s | %-10s | %-8s | %-12s\n",
+                        $s['mac_address'], $s['signal_strength'], $s['ccq_tx'], $s['tx_rate'], $s['uptime'], $s['health']);
+                }
+                break;
+
+            case 'metrics':
+                $metrics = $ros->ptmp()->getStationQualityMetrics($args[2] ?? null);
+                echo "📊 PTMP Health Metrics:\n";
+                echo "   Total Stations : " . $metrics['total_stations'] . "\n";
+                echo "   Average Signal : " . $metrics['average_signal'] . "\n";
+                echo "   Degraded Links : " . $metrics['degraded_count'] . "\n";
+                echo "   Optimal Links  : " . $metrics['optimal_count'] . "\n";
+                echo "   Health Index   : " . $metrics['health_percentage'] . "%\n";
+                break;
+
+            case 'access':
+                $list = $ros->ptmp()->getAccessList();
+                echo "📋 PTMP Access List Rules (" . count($list) . "):\n";
+                echo json_encode($list, JSON_PRETTY_PRINT) . "\n";
+                break;
+
+            case 'kick':
+                $mac = $args[2] ?? '';
+                if (!$mac) {
+                    echo "⚠️  Penggunaan: php console.php ptmp kick [mac_address]\n";
+                    exit(1);
+                }
+                $res = $ros->ptmp()->kickStation($mac);
+                echo !isset($res['error']) ? "✅ Station {$mac} berhasil di-kick!\n" : "❌ Gagal: {$res['error']}\n";
+                break;
+
+            case 'channel':
+                $iface = $args[2] ?? 'wlan1';
+                $freq = $args[3] ?? '5180';
+                $res = $ros->ptmp()->setChannel($iface, $freq);
+                echo !isset($res['error']) ? "✅ Channel pada {$iface} diset ke {$freq} MHz\n" : "❌ Gagal: {$res['error']}\n";
+                break;
+
+            case 'protocol':
+                $iface = $args[2] ?? 'wlan1';
+                $proto = $args[3] ?? 'nv2';
+                $res = $ros->ptmp()->setProtocol($iface, $proto);
+                echo !isset($res['error']) ? "✅ Protokol PTMP pada {$iface} diset ke {$proto}\n" : "❌ Gagal: {$res['error']}\n";
+                break;
+
+            default:
+                echo "Pilihan PTMP: php console.php ptmp [stations|metrics|access|kick|channel|protocol]\n";
+                break;
+        }
+        break;
+
+    // --- UNIVERSAL CRUD ACTIONS ---
+    case 'create':
+    case 'add':
+        $path = $args[1] ?? '';
+        if (!$path) {
+            echo "⚠️  Penggunaan: php console.php create [path] [key1=val1] [key2=val2] ...\n";
+            exit(1);
+        }
+        $params = [];
+        foreach (array_slice($args, 2) as $pair) {
+            if (str_contains($pair, '=')) {
+                [$k, $v] = explode('=', $pair, 2);
+                $params[$k] = $v;
+            }
+        }
+        $res = $ros->create()->create($path, $params);
+        echo json_encode($res, JSON_PRETTY_PRINT) . "\n";
+        break;
+
+    case 'read':
+    case 'get':
+        $path = $args[1] ?? '';
+        if (!$path) {
+            echo "⚠️  Penggunaan: php console.php read [path] [optional:where_key=val]\n";
+            exit(1);
+        }
+        $where = [];
+        foreach (array_slice($args, 2) as $pair) {
+            if (str_contains($pair, '=')) {
+                [$k, $v] = explode('=', $pair, 2);
+                $where[$k] = $v;
+            }
+        }
+        $res = $ros->read()->read($path, $where);
+        echo json_encode($res, JSON_PRETTY_PRINT) . "\n";
+        break;
+
+    case 'terminal':
+    case 'term':
+        $cmd = $args[1] ?? '';
+        if (!$cmd) {
+            echo "⚠️  Penggunaan: php console.php terminal \"[cli_command]\"\n";
+            exit(1);
+        }
+        $output = $ros->write()->terminal($cmd);
+        echo $output . "\n";
+        break;
+
+    case 'comm':
+        $cmd = $args[1] ?? '';
+        if (!$cmd) {
+            echo "⚠️  Penggunaan: php console.php comm \"/ip/address/print\"\n";
+            exit(1);
+        }
+        $res = $ros->customCommand($cmd);
+        echo json_encode($res, JSON_PRETTY_PRINT) . "\n";
+        break;
+
     case 'help':
     default:
         echo "Pilihan Perintah CLI:\n";
         echo "  php console.php status                      - Status & resource router\n";
+        echo "  php console.php protocol [api|rest|ssh|telnet] - Ganti protokol koneksi\n";
+        echo "  php console.php ptmp stations               - Pantau sinyal & CPE PTMP\n";
+        echo "  php console.php ptmp metrics                - Ringkasan kualitas link PTMP\n";
+        echo "  php console.php ptmp kick [mac]             - Kick CPE station tertentu\n";
+        echo "  php console.php ptmp channel [iface] [freq] - Ganti frekuensi AP\n";
+        echo "  php console.php ptmp protocol [iface] [nv2] - Ganti mode NV2/Nstreme\n";
         echo "  php console.php voucher [qty] [prof] [jam]  - Buat voucher Hotspot instan\n";
         echo "  php console.php kick [user]                 - Putuskan sesi user aktif\n";
-        echo "  php console.php bypass [mac] [nama]         - Bypass perangkat tanpa login\n";
-        echo "  php console.php backup [nama]               - Buat binary backup di router\n";
-        echo "  php console.php wol [mac] [interface]       - Kirim Wake-on-LAN ke PC\n";
         echo "  php console.php setlimit [user] [limit]     - Ubah limit uptime/bytes user\n";
         echo "  php console.php setcomment [user] [teks]    - Ubah komentar user\n";
-        echo "  php console.php setemail [user] [email]     - Ubah email user\n";
         echo "  php console.php setname [oldName] [newName] - Ganti nama/username item\n";
         echo "  php console.php findid [name] [path]        - Cari .id dari nama item\n";
         echo "  php console.php suspend [user]              - Isolir pelanggan PPPoE\n";
         echo "  php console.php unsuspend [user]            - Buka isolir pelanggan PPPoE\n";
-        echo "  php console.php comm \"[perintah]\"           - Eksekusi RouterOS command\n";
+        echo "  php console.php create [path] [key=val ...] - Generic add record baru\n";
+        echo "  php console.php read [path] [where=val ...] - Generic read/print record\n";
+        echo "  php console.php terminal \"[command]\"        - Eksekusi Terminal CLI raw\n";
         break;
 }
 
